@@ -10,6 +10,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "Transformation.h"
+#include "MLIRCodeIR.h"
+#include "Node.h"
 
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
@@ -52,12 +54,13 @@
 
 class Tiling: public Transformation{
     private:
-        int tileSize; 
+        llvm::SmallVector<unsigned, 6> tileSize;
+        mlir::SmallVector<mlir::AffineForOp, 6> band; 
     public:
         Tiling();
 
         /// Constructor for Tiling that allows specifying the tile size.
-        Tiling(int tileSize);
+        Tiling(llvm::SmallVector<unsigned, 6>* tileSize, llvm::SmallVector<mlir::AffineForOp, 6>* band);
 
         /// Applies the tiling transformation to the given CodeIR object.
         /// Overrides the applyTransformation() method from the base class Transformation.
@@ -65,5 +68,5 @@ class Tiling: public Transformation{
 
         /// Creates a list of tiling transformation candidates for the given CodeIR object.
         /// Overrides the createCandidates() method from the base class Transformation.
-        std::list<Transformation*> createCandidates(CodeIR* CodeIr) override;
+        static SmallVector<Node* , 2>  createTilingCandidates(MLIRCodeIR* CodeIr);
 };

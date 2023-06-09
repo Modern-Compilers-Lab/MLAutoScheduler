@@ -20,14 +20,14 @@ double EvaluationByExecution::evaluateTransformation(int argc, char** argv, Dial
     mlir::OwningOpRef<Operation*>* module = (mlir::OwningOpRef<Operation*>*)(node->getTransformedCodeIr()->getIr());
     AsmState asmState((*module).get(), OpPrintingFlags(), /*locationMap=*/nullptr,
                         &fallbackResourceMap);
-    (* module).get()->print(output, asmState);
+    //(* module).get()->print(output, asmState);
 
     llvm::InitLLVM y(argc, argv);
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
     llvm::InitializeNativeTargetAsmParser();
 
-    
+    std::cout<<"Runner\n";
     mlir::JitRunnerMainForScheduler(argc, argv, registry, /*ChildNode->getTransformedCodeIr()*/( module));
     
 
