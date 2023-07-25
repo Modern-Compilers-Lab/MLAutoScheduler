@@ -22,12 +22,24 @@
 
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
+#include "mlir/IR/Dialect.h"
+#include "mlir/InitAllDialects.h"
+#include "mlir/InitAllPasses.h"
 
 #include "mlir/Target/LLVMIR/Dialect/All.h"
 
 #include <utility>
 #include <chrono>
 #include <iostream>
+
+#include <stdio.h>
+#include<sys/wait.h>
+#include<unistd.h>
+
+#define READ 0
+#define WRITE 1
+
+
 #pragma once
 
 using namespace mlir;
@@ -38,5 +50,5 @@ class EvaluationByExecution {
         /// - registry: A reference to the DialectRegistry used for execution.
         /// - node: A pointer to the Node object representing the transformation.
         /// Returns: The evaluation result as a double value.
-        double evaluateTransformation(int argc, char** argv, DialectRegistry &registry, Node* node);
+        double evaluateTransformation(/*int argc, char** argv, DialectRegistry &registry,*/ Node* node);
 };

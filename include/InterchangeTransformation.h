@@ -1,10 +1,10 @@
 
-//===----------------------- TilingTransformation.h ----------------------===//
+//===----------------------- InterchangeTransformation.h ----------------------===//
 //
 //===----------------------------------------------------------------------===//
 ///
 /// \file
-/// This file contains the declaration of the TilingTransformation class, which  
+/// This file contains the declaration of the InterchangeTransformation class, which  
 /// contains the declartion of the tiling transformation
 ///
 //===----------------------------------------------------------------------===//
@@ -32,7 +32,6 @@
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
-#include "mlir/Dialect/Linalg/IR/Linalg.h"
 
 #include "mlir/IR/DialectRegistry.h"
 #include "mlir/Pass/Pass.h"
@@ -41,36 +40,39 @@
 #include "mlir/Transforms/Passes.h"
 #include "mlir/Dialect/Affine/Passes.h"
 #include "mlir/Dialect/Linalg/Passes.h"
-
+#include "mlir/Dialect/Affine/LoopUtils.h"
 
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 
+#include "mlir/Dialect/Affine/Analysis/Utils.h"
 // #include "/home/nassimiheb/MLIR/llvm-project/mlir/lib/Dialect/Affine/Transforms/LoopTiling.cpp"
+
 
 #include <iostream>
 #include <random>
 #pragma once
 
-class Tiling: public Transformation{
+class Interchange: public Transformation{
     private:
-        mlir::linalg::LinalgOp* op;
-        mlir::linalg::LinalgTilingOptions options;
-        mlir::MLIRContext *context;
-        llvm::SmallVector<int64_t, 4>tileSizes;
+    mlir::linalg::GenericOp* op;
+    mlir::MLIRContext *context;
+    std::vector<unsigned>InterchangeVector;
+
     public:
-        Tiling();
+        Interchange();
 
         /// Constructor for Tiling that allows specifying the tile size.
-        Tiling(mlir::linalg::LinalgOp* op, mlir::linalg::LinalgTilingOptions &options, llvm::SmallVector<int64_t, 4> tileSizes, mlir::MLIRContext *context);
+        Interchange(linalg::GenericOp *op, std::vector<unsigned> InterchangeVector, mlir::MLIRContext *context);
 
         /// Applies the tiling transformation to the given CodeIR object.
         /// Overrides the applyTransformation() method from the base class Transformation.
         void applyTransformation(CodeIR CodeIr) override;
         std::string printTransformation() override;
+
+        std::vector<unsigned> getInterchangeVector();
+
         /// Creates a list of tiling transformation candidates for the given CodeIR object.
         /// Overrides the createCandidates() method from the base class Transformation.
-        static SmallVector<Node* , 2>  createTilingCandidates(Node *node, mlir::MLIRContext *context);
-
-        mlir::linalg::LinalgTilingOptions getOptions();
+        static SmallVector<Node* , 2>  createInterchangeCandidates(Node* node, mlir::MLIRContext *context);
 };

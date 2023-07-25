@@ -1,4 +1,6 @@
 #include <iostream>
+#include <cstdio>
+#include <cstring>
 
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/IR/Dialect.h"
@@ -35,6 +37,7 @@
 #include "Node.h"
 #include "EvaluationByExecution.h"
 #include "TilingTransformation.h"
+#include "InterchangeTransformation.h"
 #include "MLIRCodeIR.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include <optional>
@@ -88,20 +91,28 @@ registerAllDialects(registry);
 
 
 mlir::registerAllToLLVMIRTranslations(registry);
-//mlir::registerAllToLLVMIRTranslations(registry);
 
-registry.insert<AffineDialect, scf::SCFDialect, linalg::LinalgDialect, arith::ArithDialect, func::FuncDialect,memref::MemRefDialect,transform::TransformDialect>();
+
+registry.insert<AffineDialect, scf::SCFDialect, 
+                linalg::LinalgDialect, 
+                arith::ArithDialect, 
+                func::FuncDialect,
+                memref::MemRefDialect,
+                transform::TransformDialect,
+                bufferization::BufferizationDialect,
+                tensor::TensorDialect>();
 context.appendDialectRegistry(registry);
 context.loadDialect<SCFDialect>();
 
-mlir::OwningOpRef<Operation*> module1 = (mlir::OwningOpRef<Operation*>)codeIr.parseInputFile(inputFilename, context);
+mlir::OwningOpRef<Operation*> module1 = 
+  (mlir::OwningOpRef<Operation*>)codeIr.parseInputFile(inputFilename, context);
 
 // mlir::OwningOpRef<Operation*> module = parseSourceString(transformString, &context);
 
 (*module1)->dump();
-Node* node = new Node(&codeIr);
-// SmallVector<Operation *> tileOps;
-// SmallVector<Operation *> tiledOps;
+Node* root = new Node(&codeIr);
+SmallVector<Operation *> tileOps;
+SmallVector<Operation *> tiledOps;
 // // ############# 3nd Try
 // // Transform all targets one by one.
 //   //for (Operation *target : targets) {
@@ -116,181 +127,170 @@ Node* node = new Node(&codeIr);
 //                             /*nominalTileSizes=*/std::nullopt, mapping,
 //                             /*omitTileOffsetBoundsCheck=*/false);
 // // ############# 3nd Try
-// // ############# 2nd Try
-// ArrayRef<int64_t> tileSizes;
-// ArrayRef<int64_t> tileInterchange;
-// mlir::linalg::LinalgTilingOptions tilingOptions;
-// std::cout<<"Setting options\n";
-//   tilingOptions = tilingOptions
-//                       .setInterchange(SmallVector<unsigned>(
-//                           tileInterchange.begin(), tileInterchange.end()))
-//                       .setTileSizes(tileSizes)
-//                       .setLoopType(mlir::linalg::LinalgTilingLoopType::Loops);
-// std::cout<<"rewriter\n";
-//   // TODO: Propagate RewriterBase everywhere.
-//   IRRewriter rewriter(&context);
-// std::cout<<"tileLinalgOp\n";
-//   FailureOr<mlir::linalg::TiledLinalgOp> tiledRootOp =
-//       tileLinalgOp(rewriter, target, tilingOptions);
-// // ############# 2nd Try
-// ############# First Try
-// Operation *target = (module1).get();
-// std::optional<ArrayAttr> mapping;
-// SmallVector<OpFoldResult> mixedTileSizes;
-// IRRewriter rewriter(&context);
 
-// mlir::PassManager pm((module1).get()->getName());
+std::optional<ArrayAttr> mapping;
+SmallVector<OpFoldResult> mixedTileSizes;
+IRRewriter rewriter(&context);
 
-// // Apply any generic pass manager command line options and run the pipeline.
-// applyPassManagerCLOptions(pm);
-// mlir::OpPassManager &optPM = pm.nest<mlir::func::FuncOp>(); 
-
-//pm.addPass(mlir::createInlinerPass());  
- //optPM.addPass(mlir::createLinalgBufferizePass()); 
-//optPM.addPass(createSCFForLoopCanonicalizationPass());
-//optPM.addPass(mlir::createConvertLinalgToLoopsPass());
-
-
-// pm.addPass(mlir::createConvertLinalgToLLVMPass ());
-// optPM.addPass(mlir::createConvertSCFToCFPass());
-// //     optPM.addPass(memref::createExpandStridedMetadataPass ());
-// //     optPM.addPass(mlir::createLowerAffinePass ());
-    
-// //     optPM.addPass( mlir::createArithToLLVMConversionPass());
-// //     optPM.addPass(mlir::createConvertSCFToCFPass());
-  
-     
-// //     pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
-// //     pm.addPass(mlir::createConvertFuncToLLVMPass());
-// //     pm.addPass(mlir::createReconcileUnrealizedCastsPass ());
-
-// if (!mlir::failed(pm.run(*(module1))))
-// (*module1)->dump();
-
-// target->walk([&](Operation *op) {
-//       if (auto tileableOp = dyn_cast<LinalgOp>(op)) {
-//         // 'op' implements the TilingInterface, you can work with it.
-//         // Perform tiling-related operations here.
-//         // ...
-//         std::cout<<"##################################################\n"; 
-//         std::cout<<"FOUND\n";
-//         llvm::outs() << "Found operation that implements TilingInterface:\n";
-//         op->print(llvm::outs());
-//         llvm::outs() << "\n";
-//         // if (!(op->getNumResults() != 1 || !op->getResult(0).getType().isIndex())) {
-//         //     mixedTileSizes.push_back(op->getResult(0));
-//         //     std::cout<<"ENtery\n";
-//         //     }
-//         LinalgTilingOptions options;
-//         SmallVector<int64_t, 4> tileSizes;
-  
-//         // Fill the vector with values
-//         tileSizes.push_back(32);
-//         tileSizes.push_back(32);
-//         tileSizes.push_back(64);
-//         tileSizes.push_back(32);
-//         tileSizes.push_back(128);
-//         options.setTileSizes(tileSizes);
-//         options.setLoopType(LinalgTilingLoopType::Loops);
-//         FailureOr<linalg::TiledLinalgOp> maybeTiled = linalg::tileLinalgOp(
-//           rewriter, tileableOp, options);
-//         //std::cout<op->getResult(0).getType();
-        
-//         //
-//         // rewriter.setInsertionPoint(tileableOp);
-//         // std::cout<<"tilingResult\n"; 
-//         // FailureOr<linalg::ForallTilingResult> tilingResult;
-//         // std::cout<<"tileToForallOpUsingTileSizes\n"; 
-//         // tilingResult = linalg::tileToForallOpUsingTileSizes(
-//         // rewriter, tileableOp, mixedTileSizes, mapping);
-//         // std::cout<<"rewriter.replaceOp\n"; 
-//         // if (!failed(tilingResult))
-//         // rewriter.replaceOp(tileableOp, tilingResult->tileOp->getResults());
-
-//         // tileOps.push_back(tilingResult->tileOp);
-//         // tiledOps.push_back(tilingResult->tiledOp);
-
-        
-//       }
-//     });
-// std::cout<<"FINISHED\n";
-// (*module1)->dump();
 mlir::PassManager pm((module1).get()->getName());
 
-// Apply any generic pass manager command line options and run the pipeline.
+//Apply any generic pass manager command line options and run the pipeline.
 applyPassManagerCLOptions(pm);
 mlir::OpPassManager &optPM = pm.nest<mlir::func::FuncOp>(); 
 
-
-// pm.addPass(mlir::createInlinerPass());  
-//optPM.addPass(mlir::createLinalgBufferizePass()); 
-//pm.addPass(mlir::createConvertLinalgToLLVMPass ());
-//optPM.addPass(createSCFForLoopCanonicalizationPass());
-//optPM.addPass(mlir::createConvertLinalgToLoopsPass());
-optPM.addPass(mlir::createConvertLinalgToAffineLoopsPass ()); 
-// optPM.addPass(mlir::createConvertSCFToCFPass());
-//     optPM.addPass(memref::createExpandStridedMetadataPass ());
-//     optPM.addPass(mlir::createLowerAffinePass ());
-    
-//     optPM.addPass( mlir::createArithToLLVMConversionPass());
-//     optPM.addPass(mlir::createConvertSCFToCFPass());
-  
-     
-//     pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
-//     pm.addPass(mlir::createConvertFuncToLLVMPass());
-//     pm.addPass(mlir::createReconcileUnrealizedCastsPass ());
+optPM.addPass(mlir::createLinalgGeneralizationPass());
 
 if (!mlir::failed(pm.run(*(module1))))
-(*module1)->dump();
-    
 
+std::cout<<"##################################################\n";
+
+EvaluationByExecution evaluator;
+
+SmallVector<Node* , 2>   list = Interchange::createInterchangeCandidates(root, &context/*(ChildNode->getTransformedCodeIr())*/);
+
+root->setChildrenNodes(list);
+std::cout  << "Size "<<list.size()<<std::endl;
+
+double RootEvel = evaluator.evaluateTransformation(root);
+ 
+root->setEvaluation(RootEvel);
+
+for (auto ChildNode : list){
+
+  SmallVector<Node* , 2>   list1 = Tiling::createTilingCandidates(ChildNode, &context/*(ChildNode->getTransformedCodeIr())*/);
+ 
+  std::cout<<list.size();
+  ChildNode->setChildrenNodes(list1);
+  double evel = evaluator.evaluateTransformation(ChildNode);
+ 
+  ChildNode->setEvaluation(evel);
+
+  for (auto node1: list1){
+    double evel = evaluator.evaluateTransformation(node1);
+    node1->setEvaluation(evel); 
+  }
+}
+
+std::ostringstream outputStringStream;
+outputStringStream << "{ \"name\" : \"conv2d\" , \"evaluations\": [\n";
+
+root->printSchedule(outputStringStream);
+outputStringStream << "]\n}";
+
+std::string outputString = outputStringStream.str();
+std::ofstream outputFile("/home/nassimiheb/conv2d_benchmark_exhustiveEval.json");
+    if (!outputFile.is_open()) {
+        std::cout << "Failed to open file: " << std::endl;
+      
+    }
+  outputFile << outputString;
+outputFile.close();
+
+std::cout <<"End of exploration!";
+
+// /double time = evaluator.evaluateTransformation(argc, argv, registry, list[0]);
+// for (int i =0 ; i <=10; i++){
+// std::cout<<"########################Interchange##########################\n";
+// Operation* op0 = ((mlir::OwningOpRef<Operation*>*)(*list[0]->getTransformedCodeIr()).getIr())->get();
+// }
+
+// Operation* op = ((mlir::OwningOpRef<Operation*>*)(*list[1]->getTransformedCodeIr()).getIr())->get();
+// op->dump();
+// SmallVector<Node* , 2>   list1 = Tiling::createTilingCandidates((MLIRCodeIR*)(list[0]->getTransformedCodeIr()), &context);
+// std::cout<<list1.size();
+// std::cout<<"########################Tiling##########################\n";
+// Operation* opfinal = ((mlir::OwningOpRef<Operation*>*)(*list1[28]->getTransformedCodeIr()).getIr())->get();
+// opfinal->dump();
+
+// target->walk([&](Operation *op) {
+//       if (auto tileableOp = dyn_cast<GenericOp>(op)) {
+         // #############Tiling####################
+        // // // 'op' implements the TilingInterface, you can work with it.
+        // // // Perform tiling-related operations here.
+        // // // ...
+        // std::cout<<"##################################################\n"; 
+        // std::cout<<"FOUND\n";
+        // llvm::outs() << "Found operation that implements TilingInterface:\n";
+        // op->print(llvm::outs());
+        // llvm::outs() << "\n";
+        // // if (!(op->getNumResults() != 1 || !op->getResult(0).getType().isIndex())) {
+        // //     mixedTileSizes.push_back(op->getResult(0));
+        // //     std::cout<<"ENtery\n";
+        // //     }
+        // LinalgTilingOptions options;
+        // SmallVector<int64_t, 4> tileSizes;
+  
+        // // Fill the vector with values
+        // tileSizes.push_back(32);
+        // tileSizes.push_back(32);
+        // tileSizes.push_back(64);
+        // tileSizes.push_back(32);
+        // tileSizes.push_back(128);
+        // tileSizes.push_back(256);
+        // options.setTileSizes(tileSizes);
+        // options.setLoopType(LinalgTilingLoopType::Loops);
+        // FailureOr<linalg::TiledLinalgOp> maybeTiled = linalg::tileLinalgOp(
+        //   rewriter, tileableOp, options);
+        // ###################################################################
+        // SmallVector<Range> iterationDomain = tileableOp.getIterationDomain(rewriter);
+        // size_t numLoops = iterationDomain.size();
+        // ##############################INterchange#####################################
+      // if (LinalgOp linalgOperation = dyn_cast<GenericOp>(op)) {
+      //       int64_t numLoops = linalgOperation.getNumLoops();
+      //        std::vector<unsigned> values(numLoops);
+      //       for (int64_t i = 0; i < numLoops; ++i) {
+      //         values[i] = i;  // Replace with your desired values or logic
+      //       }  
+      //       int64_t  temp = values[0];
+      //       values[0] = values[1];
+      //       values[1] = temp;
+      //       ArrayRef<unsigned> interchangeVector(values);
+      //       FailureOr<GenericOp> interOp = interchangeGenericOp(rewriter,tileableOp, interchangeVector);
+      // }
+      // (*module1)->dump();
+      //  // ###################################################################
+        
+        //FailureOr<GenericOp> genOp = generalizeNamedOp(rewriter,
+        //                                      tileableOp);
+
+        //std::cout<op->getResult(0).getType();
+        
+        //
+        // rewriter.setInsertionPoint(tileableOp);
+        // std::cout<<"tilingResult\n"; 
+        // FailureOr<linalg::ForallTilingResult> tilingResult;
+        // std::cout<<"tileToForallOpUsingTileSizes\n"; 
+        // tilingResult = linalg::tileToForallOpUsingTileSizes(
+        // rewriter, tileableOp, mixedTileSizes, mapping);
+        // std::cout<<"rewriter.replaceOp\n"; 
+        // if (!failed(tilingResult))
+        // rewriter.replaceOp(tileableOp, tilingResult->tileOp->getResults());
+
+        // tileOps.push_back(tilingResult->tileOp);
+        // tiledOps.push_back(tilingResult->tiledOp);
+
+        
+    //   }
+    // });
+// ###################################################################
   //}
 // ############# First Try
 // //Tiling* tr = new Tiling(32) ;
 
 
-
-SmallVector<Node* , 2>   list = Tiling::createTilingCandidates(&codeIr/*(ChildNode->getTransformedCodeIr())*/);
-std::cout<<list.size();
-
-
-//std::vector<Transformation*> TransformationList;
-//TransformationList.push_back(list[6]);
-//Node* ChildNode = new Node (TransformationList,&codeIr,list[6]);
-// list[1]->applyTransformation();
-// Operation* op = ((mlir::OwningOpRef<Operation*>*)(*list[1]->getTransformedCodeIr()).getIr())->get();
-// op->dump();
-
-//(*module1)->dump();
+// (*module1)->dump();
 // Tiling* tr1 = new Tiling(128) ;
 // std::list<Transformation> TransformationList1;
 // TransformationList1.push_back(*tr1);
 //Node* ChildNode1 = new Node (TransformationList1,codeIr,&(*tr1));
 
 //ChildNode1->applyTransformation();
-EvaluationByExecution evaluator;
+
 
 // std::cout<<"INSIDE\n";
 //     list[8]->applyTransformation();
 //     Operation* op = ((mlir::OwningOpRef<Operation*>*)(*list[8]->getTransformedCodeIr()).getIr())->get();
 //     op->dump();
 //     double time = evaluator.evaluateTransformation(argc, argv, registry, list[8]);
-   
-// llvm::InitLLVM y(argc, argv);
-//     llvm::InitializeNativeTarget();
-//     llvm::InitializeNativeTargetAsmPrinter();
-//     llvm::InitializeNativeTargetAsmParser();
-for (auto node: list){
-    
-    std::cout<<"INSIDE\n";
-    node->applyTransformation();
-    // Operation* op = ((mlir::OwningOpRef<Operation*>*)(*node->getTransformedCodeIr()).getIr())->get();
-    // op->dump();
-   
-    double time = evaluator.evaluateTransformation(argc, argv, registry, node);
+
 }
-
-//
-}
-
-

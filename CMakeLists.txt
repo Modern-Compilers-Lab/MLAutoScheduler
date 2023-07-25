@@ -64,6 +64,7 @@ get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 add_llvm_executable(AutoSchedulerML 
 main.cpp
 src/TilingTransformation.cpp
+src/InterchangeTransformation.cpp
 src/EvaluationByExecution.cpp
 src/MLIRCodeIR.cpp
 )
