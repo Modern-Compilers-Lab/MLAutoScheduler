@@ -63,6 +63,8 @@ get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 
 add_llvm_executable(AutoSchedulerML 
 main.cpp
+src/VectorizationTransformation.cpp
+src/ParallelizationTransformation.cpp
 src/TilingTransformation.cpp
 src/InterchangeTransformation.cpp
 src/EvaluationByExecution.cpp
@@ -95,8 +97,10 @@ PRIVATE
   MLIRMathToLLVM
   MLIRMemRefToLLVM
   MLIRLinalgToLLVM
+  MLIROpenMPToLLVM
+  MLIRSCFToOpenMP
+  MLIRBufferizationToMemRef
 
-  MLIRBuiltinToLLVMIRTranslation
   MLIRToLLVMIRTranslationRegistration
   MLIRLLVMToLLVMIRTranslation
   MLIRExecutionEngine
@@ -105,6 +109,5 @@ PRIVATE
   MLIRAnalysis
   MLIRSupport
 
-  LLVMExegesisX86
   )
 mlir_check_all_link_libraries(AutoSchedulerML)

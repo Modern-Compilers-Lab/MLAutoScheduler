@@ -8,7 +8,7 @@
 ///
 //===----------------------------------------------------------------------===//
 #include "TilingTransformation.h"
-
+#pragma once
 using namespace mlir;
 void generateCombinations(const SmallVector<int64_t, 4>& tileSizes,
                           int64_t maxNumberLoops,

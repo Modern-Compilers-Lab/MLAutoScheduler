@@ -50,5 +50,5 @@ class EvaluationByExecution {
         /// - registry: A reference to the DialectRegistry used for execution.
         /// - node: A pointer to the Node object representing the transformation.
         /// Returns: The evaluation result as a double value.
-        double evaluateTransformation(/*int argc, char** argv, DialectRegistry &registry,*/ Node* node);
+        std::string evaluateTransformation(/*int argc, char** argv, DialectRegistry &registry,*/ Node* node);
 };
