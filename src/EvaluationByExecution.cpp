@@ -72,8 +72,8 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
 
     mlir::OwningOpRef<Operation *> *op = ((mlir::OwningOpRef<Operation *> *)(*node->getTransformedCodeIr()).getIr());
     mlir::PassManager pm((*op).get()->getName());
-    (* op)->dump();
-    return "0";
+    // (* op)->dump();
+    // return "0";
     if (std::getenv("AS_VERBOSE") != nullptr)
     {
         int asVerbose = std::stoi(std::getenv("AS_VERBOSE"));

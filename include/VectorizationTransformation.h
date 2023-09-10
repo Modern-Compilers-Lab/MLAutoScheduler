@@ -56,7 +56,7 @@ class Vectorization: public Transformation{
     private:
         mlir::linalg::LinalgOp * op;
         mlir::MLIRContext *context;
-       // llvm::SmallVector<int64_t, 4> tileSizes;
+
     public:
         Vectorization();
 
@@ -71,5 +71,4 @@ class Vectorization: public Transformation{
         /// Overrides the createCandidates() method from the base class Transformation.
         static SmallVector<Node* , 2>  createVectorizationCandidates(Node *node, mlir::MLIRContext *context);
 
-        //llvm::SmallVector<int64_t, 4>  getTileSizes();
 };
