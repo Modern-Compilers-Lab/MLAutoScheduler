@@ -67,7 +67,10 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
   SmallVector<int64_t, 4> concatenatedCombinations;
 
   SmallVector<SmallVector<Node *, 2>> ChildNodesList;
+  //llvm::SmallVector<int64_t, 4> elementsToInsert = {1, 1, 8, 32};
 
+  // Insert the elements into tileCombinations
+  //tileCombinations.push_back(elementsToInsert);
   for (int NumberLoops = 1; NumberLoops <= maxNumberLoops; ++NumberLoops)
   {
     SmallVector<SmallVector<int64_t, 4>, 4> newCombinations =
@@ -95,7 +98,7 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
 
   target->walk([&](Operation *op)
                {
-
+      
       if (mlir::TilingInterface tileableOp = dyn_cast<mlir::TilingInterface>(op)) {
           std::cout<<"FOUND\n";
           SmallVector<Node* , 2> ChildNodes;
@@ -119,7 +122,8 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
             
             ChildNodes.push_back(ChildNode);
           }
-          ChildNodesList.push_back(ChildNodes);
+            ChildNodesList.push_back(ChildNodes);
+   
 
         } });
   int OpIndex = 0;
@@ -133,7 +137,8 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
       Parallelization *parallelization = (Parallelization *)node->getTransformation();
 
       int ClonedOpIndex = 0;
-      ClonedTarget->walk([&](Operation *op){
+      ClonedTarget->walk([&](Operation *op)
+                         {
         if (mlir::TilingInterface ClonedTileableOp 
                           = dyn_cast<mlir::TilingInterface>(op)) {
             if (ClonedOpIndex == OpIndex){

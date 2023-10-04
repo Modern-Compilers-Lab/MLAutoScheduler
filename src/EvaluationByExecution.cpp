@@ -39,11 +39,16 @@ pid_t popen2(const char *command, int *infp, int *outfp)
         dup2(p_stdout[WRITE], WRITE);
         dup2(p_stdout[WRITE], STDERR_FILENO);
 
-        execl("/home/nassimiheb/MLIR/llvm-project/build/bin/mlir-cpu-runner",
-              "mlir-cpu-runner", "-e", "main", "-entry-point-result=void",
-              "-shared-libs", "/home/nassimiheb/MLIR/llvm-project/build/lib/libmlir_runner_utils.so,/home/nassimiheb/MLIR/llvm-project/build/lib/libmlir_c_runner_utils.so",
-              NULL);
-
+        if (std::getenv("LLVM_PATH") != nullptr && std::getenv("SHARED_LIBS") != nullptr)
+        {
+            std::string llvm_path = std::getenv("LLVM_PATH");
+            std::string runner = llvm_path + "/build/bin/mlir-cpu-runner";
+            char *shared_libs = std::getenv("SHARED_LIBS");
+            execl(runner.c_str(),
+                  "mlir-cpu-runner", "-e", "main", "-entry-point-result=void",
+                  "-shared-libs", shared_libs,
+                  NULL);
+        }
         perror("execl");
         exit(1);
     }
@@ -72,15 +77,14 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
 
     mlir::OwningOpRef<Operation *> *op = ((mlir::OwningOpRef<Operation *> *)(*node->getTransformedCodeIr()).getIr());
     mlir::PassManager pm((*op).get()->getName());
-    // (* op)->dump();
-    // return "0";
+
     if (std::getenv("AS_VERBOSE") != nullptr)
     {
         int asVerbose = std::stoi(std::getenv("AS_VERBOSE"));
         if (asVerbose == 1)
         {
             std::ofstream debugFile;
-            debugFile.open("logs.txt", std::ios_base::app);
+            debugFile.open("logs_matmul1.txt", std::ios_base::app);
             if (debugFile.is_open())
             {
                 std::string str;
@@ -102,6 +106,7 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
             }
         }
     }
+
     // std::cout << str <<std::endl;
     // Apply any generic pass manager command line options and run the pipeline.
     applyPassManagerCLOptions(pm);
@@ -112,39 +117,55 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     options.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
 
     pm.addPass(mlir::bufferization::createOneShotBufferizePass(options));
+
     mlir::OpPassManager &optPM = pm.nest<mlir::func::FuncOp>();
     // pm.addPass(mlir::bufferization::createBufferResultsToOutParamsPass());
     optPM.addPass(mlir::bufferization::createBufferDeallocationPass());
     optPM.addPass(mlir::bufferization::createFinalizingBufferizePass());
     pm.addPass(mlir::createBufferizationToMemRefPass());
-    pm.addPass(mlir::createCanonicalizerPass());
+
+    //(**op)->dump();
+    // return "0";
+    //(* op)->dump();
+    // return "0";
+    // pm.addPass(mlir::createCanonicalizerPass());
+    optPM.addPass(mlir::bufferization::createBufferDeallocationPass());
 
     optPM.addPass(mlir::createConvertLinalgToLoopsPass());
-    pm.addPass(mlir::createCanonicalizerPass());
+    // pm.addPass(mlir::createCanonicalizerPass());
     optPM.addPass(mlir::createForEachThreadLowering());
-    pm.addPass(mlir::createForLoopRangeFoldingPass());
+
+    // pm.addPass(mlir::createSCFForLoopCanonicalizationPass ());
+    // pm.addPass(mlir::createForLoopRangeFoldingPass());
+    // pm.addPass(mlir::createParallelLoopFusionPass ());
+
     pm.addPass(mlir::createConvertSCFToOpenMPPass());
+
+    pm.addPass(mlir::createCanonicalizerPass());
+
     optPM.addPass(mlir::createLowerAffinePass());
+
     pm.addPass(mlir::createConvertVectorToSCFPass());
     optPM.addPass(memref::createExpandStridedMetadataPass());
     pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
 
-    optPM.addPass(mlir::createConvertSCFToCFPass());
+    pm.addPass(mlir::createConvertSCFToCFPass());
+
     optPM.addPass(mlir::createLowerAffinePass());
+
     optPM.addPass(mlir::createArithToLLVMConversionPass());
-    pm.addPass(createConvertMathToLLVMPass());
-    pm.addPass(mlir::createConvertMathToLibmPass());
+    // pm.addPass(createConvertMathToLLVMPass());
+    // pm.addPass(mlir::createConvertMathToLibmPass());
     pm.addPass(createConvertVectorToLLVMPass());
+
     pm.addPass(createConvertOpenMPToLLVMPass());
     pm.addPass(createConvertControlFlowToLLVMPass());
     pm.addPass(mlir::createConvertFuncToLLVMPass());
     pm.addPass(mlir::createReconcileUnrealizedCastsPass());
 
     if (!mlir::failed(pm.run(*(*op))))
-    
-    //(**op)->dump();
-    (**op)->print(output);
-    std::string command = "/home/nassimiheb/MLIR/llvm-project/build/bin/mlir-cpu-runner";
+        (**op)->print(output);
+    std::string command = "";
 
     int in_fd, out_fd;
     pid_t pid;
@@ -227,6 +248,5 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     // if (position != std::string::npos) {
     //     s.erase(position);
     // }
-    return output_data.data(); 
+    return output_data.data();
 }
-

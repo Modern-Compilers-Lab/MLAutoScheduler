@@ -68,7 +68,6 @@ func.func private @printI64(i64)
 !TTb = tensor<7x7x3x64xf32>
 !TTc = tensor<32x112x112x64xf32>
 
-
 func.func @alloc_4d_filled_f32(%s1 : index, %s2 : index, %s3 : index, %s4 : index, %f : f32) -> tensor<?x?x?x?xf32> {
   %buf = bufferization.alloc_tensor(%s1, %s2, %s3, %s4) : tensor<?x?x?x?xf32>
   %ret = linalg.fill ins(%f : f32) outs(%buf : tensor<?x?x?x?xf32>) -> tensor<?x?x?x?xf32>
@@ -83,6 +82,8 @@ func.func @conv_2d_nhwc_hwcf(%arg0: !TTa, %arg1: !TTb , %arg2: !TTc) -> !TTc {
   return %ret : !TTc
 }
 
+
+
 func.func @main() {
   %c0 = arith.constant 0 : index
   %c1 = arith.constant 3 : index
@@ -94,7 +95,7 @@ func.func @main() {
   %f10 = arith.constant 10.00000e+00 : f32
   %val = arith.constant 2.00000e+00 : f32
   %zero = arith.constant 0.00000e+00 : f32
-   %t0 = func.call @nanoTime() : () -> (i64)
+   
 
   %filter2D_nhwc_temp = call @alloc_4d_filled_f32(%c3, %c3, %c1, %c64, %val) :(index, index, index, index, f32) -> (tensor<?x?x?x?xf32>)
   %filter2D_nhwc = tensor.cast %filter2D_nhwc_temp : tensor<?x?x?x?xf32> to !TTb
@@ -104,7 +105,10 @@ func.func @main() {
   %out2D_nhwc_temp = call @alloc_4d_filled_f32(%c32, %c6, %c6, %c64, %zero) : (index, index, index, index, f32) -> (tensor<?x?x?x?xf32>)
   %out2D_nhwc = tensor.cast %out2D_nhwc_temp : tensor<?x?x?x?xf32> to !TTc
 
- 
+  // %1 = shape.shape_of %filter2D_nhwc : tensor<?x?x?x?xf32> -> !shape.shape
+  // %2 = shape.with_shape %filter2D_nhwc, %1 : tensor<?x?x?x?xf32>, !shape.shape
+  // %3 = shape.value_of %2 :!TTb
+ %t0 = func.call @nanoTime() : () -> (i64)
   %dense_ret = call @conv_2d_nhwc_hwcf(%in2D_nhwc, %filter2D_nhwc, %out2D_nhwc) : (!TTa, !TTb,!TTc) -> (!TTc)
  
   %t1 = func.call @nanoTime() : () -> (i64)
@@ -120,4 +124,8 @@ func.func @main() {
 
   return
 }
+
+
+
+
 

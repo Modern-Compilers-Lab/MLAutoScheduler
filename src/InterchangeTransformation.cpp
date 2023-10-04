@@ -116,7 +116,8 @@ SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
       std::vector<unsigned> candidate = inter->getInterchangeVector();
       ArrayRef<unsigned> interchangeVector(candidate);
       int ClonedOpIndex = 0;
-      ClonedTarget->walk([&](Operation *op){
+      ClonedTarget->walk([&](Operation *op)
+                         {
         if (linalg::GenericOp ClonedInterchangeableOp = 
                   dyn_cast<linalg::GenericOp>(op)) {
             if (ClonedOpIndex == OpIndex){
@@ -164,7 +165,7 @@ std::vector<std::vector<unsigned>> generateCandidates(int64_t numLoops,
       candidates.begin(),
       candidates.end(),
       std::back_inserter(out),
-      candidates.size(),
+      50,
       std::mt19937{std::random_device{}()});
   return out;
   // return candidates;

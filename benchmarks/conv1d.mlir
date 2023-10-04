@@ -26,12 +26,12 @@ func.func @conv_1d(%arg0: tensor<?xf32>, %arg1: tensor<?xf32>, %arg2: tensor<?xf
 
 func.func @main() {
   %c3 = arith.constant 4 : index
-  %c6 = arith.constant 1022 : index
-  %c8 = arith.constant 1024 : index
+  %c6 = arith.constant 2046 : index
+  %c8 = arith.constant 2048 : index
   %f10 = arith.constant 10.00000e+00 : f32
   %val = arith.constant 2.00000e+00 : f32
   %zero = arith.constant 0.00000e+00 : f32
-
+ %t0 = func.call @nanoTime() : () -> (i64)
   %filter1D = call @alloc_1d_filled_f32(%c3, %val) : (index, f32) -> (tensor<?xf32>)
   // %filter = tensor.cast %filter1D : tensor<?xf32> to tensor<4xf32>
 
@@ -41,7 +41,7 @@ func.func @main() {
   %out1D = call @alloc_1d_filled_f32(%c6, %zero) : (index, f32) -> (tensor<?xf32>)
   // %out = tensor.cast %out1D : tensor<?xf32> to tensor<8xf32>
 
-  %t0 = func.call @nanoTime() : () -> (i64)
+ 
   %output = call @conv_1d(%in1D, %filter1D, %out1D) : (tensor<?xf32>, tensor<?xf32>, tensor<?xf32>) -> (tensor<?xf32>)
   %t1 = func.call @nanoTime() : () -> (i64)
   %delta = arith.subi %t1, %t0 : i64

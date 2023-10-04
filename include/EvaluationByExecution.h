@@ -12,6 +12,8 @@
 #include "Evaluation.h"
 #include "Node.h"
 
+#include "mlir/Dialect/SCF/Transforms/Passes.h"
+
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -35,6 +37,7 @@
 #include <stdio.h>
 #include<sys/wait.h>
 #include<unistd.h>
+
 
 #define READ 0
 #define WRITE 1

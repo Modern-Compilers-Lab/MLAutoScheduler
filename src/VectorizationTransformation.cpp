@@ -8,9 +8,9 @@
 ///
 //===----------------------------------------------------------------------===//
 #include "VectorizationTransformation.h"
-#include "/home/nassimiheb/MLIR/llvm-project/build/tools/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.h.inc"
+// #include "/home/nassimiheb/MLIR/llvm-project/build/tools/mlir/include/mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.h.inc"
 #include "mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.h"
-#include "/home/nassimiheb/MLIR/llvm-project/mlir/test/lib/Dialect/Linalg/TestLinalgTransforms.cpp"
+// #include "/home/nassimiheb/MLIR/llvm-project/mlir/test/lib/Dialect/Linalg/TestLinalgTransforms.cpp"
 #pragma once
 using namespace mlir;
 
@@ -40,7 +40,6 @@ std::string Vectorization::printTransformation()
 }
 void Vectorization::applyTransformation(CodeIR CodeIr)
 {
-
 }
 
 SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
@@ -64,8 +63,9 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
                            .getIr())
                           ->get();
 
-  target->walk([&](Operation *op){
-    (op)->dump();
+  target->walk([&](Operation *op)
+               {
+    //(op)->dump();
     if (auto genricOp = dyn_cast<linalg::LinalgOp>(op)) {
         SmallVector<Node* , 2> ChildNodes;
 
@@ -90,8 +90,7 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
           ChildNodes.push_back(ChildNode);
         //}
         ChildNodesList.push_back(ChildNodes);
-      } 
-  });
+      } });
   int OpIndex = 0;
   for (auto ChildNodes : ChildNodesList)
   {
@@ -116,7 +115,7 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
                     llvm::ArrayRef<bool> boolArrayRef;
 
                     mlir::linalg::vectorize(rewriter, genricOp, /*vectorSizesinputVectorSizes=*/emptyArrayRef,
-                     boolArrayRef/*scalableVecDims={}*/, false);
+                     boolArrayRef /*scalableVecDims={}*/, false);
                     //genricOp->dump();
                   }
                 ClonedOpIndex++;
@@ -130,6 +129,6 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
   {
     ResChildNodes.insert(ResChildNodes.end(), innerVector.begin(), innerVector.end());
   }
-  std::cout << "ERROR\n";
+  // std::cout << "ERROR\n";
   return ResChildNodes;
 }

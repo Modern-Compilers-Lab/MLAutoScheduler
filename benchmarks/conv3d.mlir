@@ -22,8 +22,8 @@ func.func @main() {
   %c0 = arith.constant 0 : index
   %c1 = arith.constant 1 : index
   %c3 = arith.constant 3 : index
-  %c6 = arith.constant 6 : index
-  %c8 = arith.constant 8 : index
+  %c6 = arith.constant 254 : index
+  %c8 = arith.constant 256 : index
   %f10 = arith.constant 10.00000e+00 : f32
   %val = arith.constant 2.00000e+00 : f32
   %zero = arith.constant 0.00000e+00 : f32
