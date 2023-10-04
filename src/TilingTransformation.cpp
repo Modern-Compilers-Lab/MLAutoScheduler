@@ -209,7 +209,7 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
                       IRRewriter rewriter(context);
                       FailureOr<linalg::TiledLinalgOp> maybeTiled = 
                               linalg::tileLinalgOp(rewriter, ClonedTileableOp, tiling->getOptions());
-                      if (!failed(maybeTiled->loops.front()->getResults()))
+                      if (!failed(maybeTiled))
                               rewriter.replaceOp(ClonedTileableOp, maybeTiled->loops.front()->getResults()); 
                   }
                 ClonedOpIndex++;
