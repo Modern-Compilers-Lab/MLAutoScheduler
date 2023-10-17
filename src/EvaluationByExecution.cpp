@@ -39,9 +39,12 @@ pid_t popen2(const char *command, int *infp, int *outfp)
         dup2(p_stdout[WRITE], WRITE);
         dup2(p_stdout[WRITE], STDERR_FILENO);
 
-        execl("/home/nassimiheb/MLIR/llvm-project/build/bin/mlir-cpu-runner",
+        //-shared-libs=/Users/lei/soft/llvm-project/build/lib/libmlir_runner_utils.dylib -shared-libs=/Users/lei/soft/llvm-project/build/lib/libmlir_c_runner_utils.dylib
+
+        execl("/Users/ericasare/Desktop/Desktop/Mac2023/School/Fall2023NewYork/Capstone/MLScheduler/llvm-project/build/bin/mlir-cpu-runner",
               "mlir-cpu-runner", "-e", "main", "-entry-point-result=void",
-              "-shared-libs", "/home/nassimiheb/MLIR/llvm-project/build/lib/libmlir_runner_utils.so,/home/nassimiheb/MLIR/llvm-project/build/lib/libmlir_c_runner_utils.so",
+              "-shared-libs=/Users/ericasare/Desktop/Desktop/Mac2023/School/Fall2023NewYork/Capstone/MLScheduler/llvm-project/build/lib/libmlir_runner_utils.dylib", 
+              "-shared-libs=/Users/ericasare/Desktop/Desktop/Mac2023/School/Fall2023NewYork/Capstone/MLScheduler/llvm-project/build/lib/libmlir_c_runner_utils.dylib",
               NULL);
 
         perror("execl");
@@ -121,7 +124,7 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
 
     optPM.addPass(mlir::createConvertLinalgToLoopsPass());
     pm.addPass(mlir::createCanonicalizerPass());
-    optPM.addPass(mlir::createForEachThreadLowering());
+    // optPM.addPass(mlir::createForEachThreadLowering());
     pm.addPass(mlir::createForLoopRangeFoldingPass());
     pm.addPass(mlir::createConvertSCFToOpenMPPass());
     optPM.addPass(mlir::createLowerAffinePass());
@@ -144,7 +147,7 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     
     //(**op)->dump();
     (**op)->print(output);
-    std::string command = "/home/nassimiheb/MLIR/llvm-project/build/bin/mlir-cpu-runner";
+    std::string command = "llvm-project/mlir/tools/mlir-cpu-runner/mlir-cpu-runner.cpp";
 
     int in_fd, out_fd;
     pid_t pid;

@@ -1,0 +1,56 @@
+{ "transformationList" : "T( 32, 32, 32 )", "evaluation" : "0.000021 GFLOPS21084", "ChildrenList" : [
+{ "transformationList" : "T( 24, 32, 32 )", "evaluation" : "0.000022 GFLOPS21500", "ChildrenList" : [
+{ "transformationList" : "T( 16, 32, 32 )", "evaluation" : "0.000021 GFLOPS21417", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 32, 32 )", "evaluation" : "0.000021 GFLOPS21334", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 24, 32 )", "evaluation" : "0.000021 GFLOPS21375", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 40, 32 )", "evaluation" : "0.000022 GFLOPS21666", "ChildrenList" : [
+{ "transformationList" : "T( 16, 40, 32 )", "evaluation" : "0.000021 GFLOPS21459", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 40, 32 )", "evaluation" : "0.000021 GFLOPS21375", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 32, 32 )", "evaluation" : "0.000021 GFLOPS21375", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 48, 32 )", "evaluation" : "0.000022 GFLOPS21542", "ChildrenList" : [
+{ "transformationList" : "T( 16, 48, 32 )", "evaluation" : "0.000021 GFLOPS21333", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 48, 32 )", "evaluation" : "0.000021 GFLOPS21459", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 40, 32 )", "evaluation" : "0.000022 GFLOPS22000", "ChildrenList" : [
+{ "transformationList" : "T( 16, 40, 32 )", "evaluation" : "0.000021 GFLOPS21375", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 40, 32 )", "evaluation" : "0.000021 GFLOPS21458", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 32, 32 )", "evaluation" : "0.000021 GFLOPS21375", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 48, 32 )", "evaluation" : "0.000021 GFLOPS21459", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 40, 24 )", "evaluation" : "0.000022 GFLOPS21583", "ChildrenList" : [
+{ "transformationList" : "T( 16, 40, 24 )", "evaluation" : "0.000021 GFLOPS21417", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 40, 24 )", "evaluation" : "0.000021 GFLOPS21375", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 32, 24 )", "evaluation" : "0.000022 GFLOPS21916", "ChildrenList" : [
+{ "transformationList" : "T( 16, 32, 24 )", "evaluation" : "0.000021 GFLOPS21416", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 32, 24 )", "evaluation" : "0.000021 GFLOPS21416", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 24, 24 )", "evaluation" : "0.000021 GFLOPS21458", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 40, 24 )", "evaluation" : "0.000021 GFLOPS21417", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 32, 16 )", "evaluation" : "0.000021 GFLOPS21375", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 32, 32 )", "evaluation" : "0.000060 GFLOPS59750", "ChildrenList" : [
+{ "transformationList" : "T( 16, 32, 32 )", "evaluation" : "0.000021 GFLOPS21458", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 32, 32 )", "evaluation" : "0.000021 GFLOPS21458", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 24, 32 )", "evaluation" : "0.000021 GFLOPS21375", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 40, 32 )", "evaluation" : "0.000021 GFLOPS21416", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 32, 24 )", "evaluation" : "0.000021 GFLOPS21417", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 32, 40 )", "evaluation" : "0.000021 GFLOPS21416", "ChildrenList" : []}
+]}
+]},
+{ "transformationList" : "T( 24, 48, 24 )", "evaluation" : "0.000021 GFLOPS21458", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 40, 16 )", "evaluation" : "0.000021 GFLOPS21458", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 40, 32 )", "evaluation" : "0.000021 GFLOPS21458", "ChildrenList" : []}
+]},
+{ "transformationList" : "T( 24, 40, 40 )", "evaluation" : "0.000021 GFLOPS21375", "ChildrenList" : []}
+]},
+{ "transformationList" : "T( 24, 56, 32 )", "evaluation" : "0.000022 GFLOPS21500", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 48, 24 )", "evaluation" : "0.000021 GFLOPS21375", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 48, 40 )", "evaluation" : "0.000021 GFLOPS21334", "ChildrenList" : []}
+]},
+{ "transformationList" : "T( 24, 40, 24 )", "evaluation" : "0.000021 GFLOPS21208", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 40, 40 )", "evaluation" : "0.000021 GFLOPS21375", "ChildrenList" : []}
+]},
+{ "transformationList" : "T( 24, 32, 24 )", "evaluation" : "0.000021 GFLOPS20875", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 32, 40 )", "evaluation" : "0.000022 GFLOPS21541", "ChildrenList" : []}
+]},
+{ "transformationList" : "T( 40, 32, 32 )", "evaluation" : "0.000021 GFLOPS21416", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 24, 32 )", "evaluation" : "0.000021 GFLOPS21375", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 40, 32 )", "evaluation" : "0.000021 GFLOPS21459", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 32, 24 )", "evaluation" : "0.000022 GFLOPS21500", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 32, 40 )", "evaluation" : "0.000021 GFLOPS21458", "ChildrenList" : []}

@@ -10,6 +10,7 @@
 #include "TilingTransformation.h"
 #pragma once
 using namespace mlir;
+
 void generateCombinations(const SmallVector<int64_t, 4>& tileSizes,
                           int64_t maxNumberLoops,
                           int64_t currentLoop,
@@ -154,11 +155,14 @@ SmallVector<Node* , 2> Tiling::createTilingCandidates(Node *node,
 
 
     target->walk([&](Operation *op) {
+      // find linear algera operation
       if (linalg::LinalgOp tileableOp = dyn_cast<linalg::LinalgOp>(op)) {
          
           SmallVector<Node* , 2> ChildNodes;
-
+          // creating nodes with the transformations generated
           for (const auto& candidate : tileCombinations){
+            
+            std::cout<<candidate.data()<<std::endl;
 
             MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)CodeIr->cloneIr();
             Node* ChildNode = new Node (ClonedCode);
@@ -191,6 +195,7 @@ SmallVector<Node* , 2> Tiling::createTilingCandidates(Node *node,
     int OpIndex = 0;
     for (auto ChildNodes : ChildNodesList){
       for (auto node : ChildNodes){
+
         Operation* ClonedTarget = ((mlir::OwningOpRef<Operation*>*)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
                         .getIr())->get();
         Tiling*  tiling = (Tiling*) node->getTransformation();
@@ -198,16 +203,18 @@ SmallVector<Node* , 2> Tiling::createTilingCandidates(Node *node,
 
         int ClonedOpIndex = 0;
         ClonedTarget->walk([&](Operation *op) {
-
+          op->dump();
               if (linalg::LinalgOp ClonedTileableOp 
                                 = dyn_cast<linalg::LinalgOp>(op)) {
                   if (ClonedOpIndex == OpIndex){
                          IRRewriter rewriter(context);
-                        FailureOr<linalg::TiledLinalgOp> maybeTiled = 
+                        FailureOr<linalg::TiledLinalgOp> maybeTiled = // apply transformation
                                 linalg::tileLinalgOp(rewriter, ClonedTileableOp, tiling->getOptions());
                   }
                 ClonedOpIndex++;
-                }      
+                }     
+
+            op->dump();
         });  
       }
       OpIndex++;
@@ -431,3 +438,5 @@ SmallVector<SmallVector<int64_t, 4>, 4>
 //   }
 //   tileSizes->resize(band.size());
 // }
+
+

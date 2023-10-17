@@ -1,0 +1,12 @@
+{ "transformationList" : "", "evaluation" : "", "ChildrenList" : [
+{ "transformationList" : "T( 16, 16, 16 )", "evaluation" : "0.007821 GFLOPS7821125", "ChildrenList" : [
+{ "transformationList" : "T( 16, 16, 16 )", "evaluation" : "0.007829 GFLOPS7828708", "ChildrenList" : [
+{ "transformationList" : "T( 16, 16, 16 )", "evaluation" : "0.007410 GFLOPS7410416", "ChildrenList" : []},
+{ "transformationList" : "T( 24, 24, 24 )", "evaluation" : "0.007605 GFLOPS7604958", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 32, 32 )", "evaluation" : "0.007606 GFLOPS7605875", "ChildrenList" : []}
+]},
+{ "transformationList" : "T( 24, 24, 24 )", "evaluation" : "0.007793 GFLOPS7792708", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 32, 32 )", "evaluation" : "0.007515 GFLOPS7514834", "ChildrenList" : []}
+]},
+{ "transformationList" : "T( 24, 24, 24 )", "evaluation" : "0.007635 GFLOPS7635416", "ChildrenList" : []},
+{ "transformationList" : "T( 32, 32, 32 )", "evaluation" : "0.007674 GFLOPS7674291", "ChildrenList" : []}
