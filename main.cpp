@@ -65,7 +65,7 @@
 using namespace mlir;
 
 
-
+// function to split strings based on delimeter
 std::vector<std::string> split(const std::string str,
                                const std::string regex_str) {
     std::regex regexz(regex_str);
@@ -73,6 +73,7 @@ std::vector<std::string> split(const std::string str,
             std::sregex_token_iterator()};
 }
 
+// function to generate candidate, apply transformation and evaluate
 Node* generateSingleCandidate(int64_t tileSize1,int64_t tileSize2, int64_t tileSize3, MLIRCodeIR* originalCode, mlir::MLIRContext* context) {
     EvaluationByExecution evaluator;
     // Clone the original MLIR code
@@ -163,7 +164,7 @@ int main(int argc, char **argv)
   // (*module1)->dump();
 
 
-
+  // START OF HILL CLIMBING ALGORITHM
   int64_t desiredTileSize1 = 32;
   int64_t desiredTileSize2 = 32;
   int64_t desiredTileSize3 = 32;
