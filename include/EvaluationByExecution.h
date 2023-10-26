@@ -38,6 +38,9 @@
 #include<sys/wait.h>
 #include<unistd.h>
 
+#include "mlir/Parser/Parser.h"
+#include <fstream>
+#include <ctime>
 
 #define READ 0
 #define WRITE 1
@@ -48,6 +51,10 @@
 using namespace mlir;
 class EvaluationByExecution {
     public:
+        std::string LogsFileName;
+
+        EvaluationByExecution();
+        EvaluationByExecution(std::string LogsFileName);
         /// Evaluates the transformation by executing it with the given parameters.
         /// Parameters:
         /// - registry: A reference to the DialectRegistry used for execution.
