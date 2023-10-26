@@ -55,7 +55,7 @@
 
 class Interchange: public Transformation{
     private:
-    mlir::linalg::GenericOp* op;
+    mlir::linalg::LinalgOp* op;
     mlir::MLIRContext *context;
     std::vector<unsigned>InterchangeVector;
 
@@ -63,7 +63,7 @@ class Interchange: public Transformation{
         Interchange();
 
         /// Constructor for Tiling that allows specifying the tile size.
-        Interchange(linalg::GenericOp *op, std::vector<unsigned> InterchangeVector, mlir::MLIRContext *context);
+        Interchange(linalg::LinalgOp *op, std::vector<unsigned> InterchangeVector, mlir::MLIRContext *context);
 
         /// Applies the tiling transformation to the given CodeIR object.
         /// Overrides the applyTransformation() method from the base class Transformation.

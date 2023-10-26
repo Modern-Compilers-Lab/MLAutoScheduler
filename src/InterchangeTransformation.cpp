@@ -10,8 +10,16 @@
 #include "InterchangeTransformation.h"
 
 using namespace mlir;
+std::vector<std::vector<unsigned>> generateCandidates(int64_t numLoops,
+                                                      int64_t NbElement);
 
-Interchange::Interchange(linalg::GenericOp *op,
+void generateCandidateHelper(std::vector<unsigned> &values,
+                             std::vector<unsigned> &currentCandidate,
+                             std::vector<std::vector<unsigned>> &candidates,
+                             unsigned index);
+
+                             
+Interchange::Interchange(linalg::LinalgOp *op,
                          std::vector<unsigned> InterchangeVector,
                          mlir::MLIRContext *context)
 {
@@ -20,14 +28,6 @@ Interchange::Interchange(linalg::GenericOp *op,
   this->InterchangeVector = InterchangeVector;
   this->context = context;
 }
-
-std::vector<std::vector<unsigned>> generateCandidates(int64_t numLoops,
-                                                      int64_t NbElement);
-
-void generateCandidateHelper(std::vector<unsigned> &values,
-                             std::vector<unsigned> &currentCandidate,
-                             std::vector<std::vector<unsigned>> &candidates,
-                             unsigned index);
 
 std::string Interchange::printTransformation()
 {
@@ -50,9 +50,9 @@ std::string Interchange::printTransformation()
 }
 void Interchange::applyTransformation(CodeIR CodeIr)
 {
-
   mlir::OwningOpRef<Operation *> *module =
       (mlir::OwningOpRef<Operation *> *)CodeIr.getIr();
+
   IRRewriter rewriter(this->context);
 }
 
@@ -60,54 +60,71 @@ std::vector<unsigned> Interchange::getInterchangeVector()
 {
   return InterchangeVector;
 }
+
 SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
     Node *node,
     mlir::MLIRContext *context)
 {
-
+  // Initialize a list to store ChildNodes
   SmallVector<SmallVector<Node *, 2>> ChildNodesList;
-  MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
 
+  
+  // Get the target operation from the provided node's transformed code
+  MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
   Operation *target = ((mlir::OwningOpRef<Operation *> *)(*CodeIr)
                            .getIr())
                           ->get();
   int counter = 0;
-  std::vector<int64_t> ListNumLoops;
+
+  // Traverse the operations in the target operation's hierarchy
   target->walk([&](Operation *op)
-               {
-      if (auto InterchangeableOp = dyn_cast<linalg::GenericOp>(op)) {
-          int64_t numLoops = InterchangeableOp.getNumLoops();
-          ListNumLoops.push_back(numLoops);
-          SmallVector<Node* , 2> ChildNodes;
-          std::vector<std::vector<unsigned>> values = 
-                  generateCandidates(numLoops, 5);
-          for (const auto& candidate : values){
+  {
+    // Check if the operation is "linalg.generic"
+    if (auto InterchangeableOp = dyn_cast<linalg::LinalgOp>(op)) {
 
-            MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)CodeIr->cloneIr();
-            Node* ChildNode = new Node (ClonedCode);        
+      // TEMP : check if the operation is not 'linalg.fill' and counter is 3, targeting only the other operations 
+      if ((op->getName().getStringRef()).str() != "linalg.fill" ){
 
-            std::vector<Transformation*> TransList= node->getTransformationList();
-            ChildNode->setTransformationList(TransList);
+        int64_t numLoops = InterchangeableOp.getNumLoops();
+        SmallVector<Node* , 2> ChildNodes;
 
-            Interchange *interchange = 
-              new Interchange(&InterchangeableOp,
-                              candidate, 
-                              context);
+        // Create a list of candidate values for interchange, with different parameters
+        std::vector<std::vector<unsigned>> values = 
+                generateCandidates(numLoops, 5);
+                
+        for (const auto& candidate : values){
 
-            ChildNode->setTransformation(interchange); 
-            
-            ChildNode->addTransformation(interchange);
-            
-            ChildNodes.push_back(ChildNode);
-          }
-          ChildNodesList.push_back(ChildNodes);
-          ListNumLoops.push_back(numLoops);;
-        } });
+          // Clone the code, create a new node, and set its transformation list
+          MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)CodeIr->cloneIr();
+          Node* ChildNode = new Node (ClonedCode);        
+
+          std::vector<Transformation*> TransList= node->getTransformationList();
+          ChildNode->setTransformationList(TransList);
+
+          // Create an interchange transformation and add it to the child node
+          Interchange *interchange = 
+            new Interchange(&InterchangeableOp,
+                            candidate, 
+                            context);
+
+          ChildNode->setTransformation(interchange);
+          ChildNode->addTransformation(interchange);
+
+          // Add the child node to the list of child nodes
+          ChildNodes.push_back(ChildNode);
+        }
+        // Add the list of child nodes to ChildNodesList
+        ChildNodesList.push_back(ChildNodes);
+      } 
+      counter++; 
+    } 
+  });
   int OpIndex = 0;
   for (auto ChildNodes : ChildNodesList)
   {
     for (auto node : ChildNodes)
     {
+      // Get the target operation from the child node's transformed code
       Operation *ClonedTarget = ((mlir::OwningOpRef<Operation *> *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
                                      .getIr())
                                     ->get();
@@ -116,23 +133,37 @@ SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
       std::vector<unsigned> candidate = inter->getInterchangeVector();
       ArrayRef<unsigned> interchangeVector(candidate);
       int ClonedOpIndex = 0;
+
+      // Walk through operations in the cloned target operation
       ClonedTarget->walk([&](Operation *op)
-                         {
-        if (linalg::GenericOp ClonedInterchangeableOp = 
-                  dyn_cast<linalg::GenericOp>(op)) {
-            if (ClonedOpIndex == OpIndex){
+      {
+        if (linalg::LinalgOp ClonedInterchangeableOp = 
+                  dyn_cast<linalg::LinalgOp>(op)) {
+             // TEMP: Check if the operation is not 'linalg.fill' and ClonedOpIndex is 3 
+            if ((op->getName().getStringRef()).str() != "linalg.fill"  ){
+         
                 IRRewriter rewriter(context);
+                rewriter.setInsertionPoint(ClonedInterchangeableOp);
+                FailureOr<linalg::GenericOp> generalizeResult =
+                    generalizeNamedOp(rewriter, ClonedInterchangeableOp);
+                
+                auto genericOp = *generalizeResult;
+
+                // Perform interchange on the cloned operation
                 FailureOr<linalg::GenericOp> interOp = 
-                  interchangeGenericOp(rewriter,
-                                        ClonedInterchangeableOp, 
-                                        interchangeVector);
+                    linalg::interchangeGenericOp(rewriter,
+                                                genericOp, 
+                                                interchangeVector);
+               
             }
           ClonedOpIndex++;
-          } });
+          } 
+      });
+      
     }
     OpIndex++;
   }
-
+  // Merge the child nodes into a single list and return it
   SmallVector<Node *, 2> ResChildNodes;
   for (const auto &innerVector : ChildNodesList)
   {
@@ -165,7 +196,7 @@ std::vector<std::vector<unsigned>> generateCandidates(int64_t numLoops,
       candidates.begin(),
       candidates.end(),
       std::back_inserter(out),
-      50,
+      10,
       std::mt19937{std::random_device{}()});
   return out;
   // return candidates;
