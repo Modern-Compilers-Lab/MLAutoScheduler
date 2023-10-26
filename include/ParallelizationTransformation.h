@@ -45,7 +45,7 @@
 
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-
+#include <llvm/ADT/SmallVector.h>
 // #include "/home/nassimiheb/MLIR/llvm-project/mlir/lib/Dialect/Affine/Transforms/LoopTiling.cpp"
 
 #include <iostream>
