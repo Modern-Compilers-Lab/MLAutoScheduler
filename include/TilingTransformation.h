@@ -42,7 +42,7 @@
 #include "mlir/Dialect/Affine/Passes.h"
 #include "mlir/Dialect/Linalg/Passes.h"
 
-
+#include "mlir/Dialect/SCF/Transforms/TileUsingInterface.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 
 // #include "/home/nassimiheb/MLIR/llvm-project/mlir/lib/Dialect/Affine/Transforms/LoopTiling.cpp"
@@ -53,15 +53,15 @@
 
 class Tiling: public Transformation{
     private:
-        mlir::linalg::LinalgOp* op;
-        mlir::linalg::LinalgTilingOptions options;
+        mlir::TilingInterface* op;
+        mlir::scf::SCFTilingOptions options;
         mlir::MLIRContext *context;
         llvm::SmallVector<int64_t, 4>tileSizes;
     public:
         Tiling();
 
         /// Constructor for Tiling that allows specifying the tile size.
-        Tiling(mlir::linalg::LinalgOp* op, mlir::linalg::LinalgTilingOptions &options, llvm::SmallVector<int64_t, 4> tileSizes, mlir::MLIRContext *context);
+        Tiling(mlir::TilingInterface* op, mlir::scf::SCFTilingOptions &options, llvm::SmallVector<int64_t, 4> tileSizes, mlir::MLIRContext *context);
 
         /// Applies the tiling transformation to the given CodeIR object.
         /// Overrides the applyTransformation() method from the base class Transformation.
@@ -71,5 +71,5 @@ class Tiling: public Transformation{
         /// Overrides the createCandidates() method from the base class Transformation.
         static SmallVector<Node* , 2>  createTilingCandidates(Node *node, mlir::MLIRContext *context);
 
-        mlir::linalg::LinalgTilingOptions getOptions();
+        mlir::scf::SCFTilingOptions getOptions();
 };
