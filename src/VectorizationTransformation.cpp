@@ -46,12 +46,6 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
                                                                     mlir::MLIRContext *context)
 {
 
-  // int64_t maxNumberLoops = 3;
-  // std::vector<int64_t> possibleTileSizes = {0, 32, 64, 128};
-
-  // SmallVector<SmallVector<int64_t, 4>, 4> tileCombinations;
-  // SmallVector<int64_t, 4> concatenatedCombinations;
-
   SmallVector<SmallVector<Node *, 2>> ChildNodesList;
 
   SmallVector<linalg::LinalgOp, 2> LinalgOps;
@@ -63,7 +57,7 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
                            .getIr())
                           ->get();
 
-  target->walk([&](Operation *op)
+  /*target->walk([&](Operation *op)
                {
     //(op)->dump();
     if (auto genricOp = dyn_cast<linalg::LinalgOp>(op)) {
@@ -77,7 +71,7 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
 
           std::vector<Transformation*> TransList= node->getTransformationList();
           ChildNode->setTransformationList(TransList);
-
+          std::cout << "VECT1\n";
           Vectorization *vectorization  = 
             new Vectorization(&genricOp,
                             //candidate,
@@ -90,7 +84,28 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
           ChildNodes.push_back(ChildNode);
         //}
         ChildNodesList.push_back(ChildNodes);
-      } });
+      } });*/
+      SmallVector<Node* , 2> ChildNodes;
+
+      MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)CodeIr->cloneIr();
+      Node* ChildNode = new Node (ClonedCode);
+      
+      std::vector<Transformation*> TransList= node->getTransformationList();
+      ChildNode->setTransformationList(TransList);
+
+      linalg::LinalgOp genricOp; 
+      Vectorization *vectorization  = 
+        new Vectorization(&genricOp,
+                        //candidate,
+                        context);
+
+      ChildNode->setTransformation(vectorization); 
+      
+      ChildNode->addTransformation(vectorization);
+      
+      ChildNodes.push_back(ChildNode);
+    
+      ChildNodesList.push_back(ChildNodes);
   int OpIndex = 0;
   for (auto ChildNodes : ChildNodesList)
   {
@@ -102,28 +117,36 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
       Vectorization *vectorization = (Vectorization *)node->getTransformation();
 
       int ClonedOpIndex = 0;
+      bool vectorize = false;
       ClonedTarget->walk([&](Operation *op)
                          {
-
-              if (auto genricOp = dyn_cast<linalg::LinalgOp>(op)) {
-                  if (ClonedOpIndex == OpIndex){
+              //std::cout << "op = "<<(op->getName().getStringRef()).str()<<std::endl;
+              /*if ((op->getName().getStringRef()).str() == "scf.for" || (op->getName().getStringRef()).str() == "scf.forall"){ //TEMP : NOT GENERAL
+                //std::cout << "SCF FOUND\n";
+                vectorize = true;
+              }*/
+             
+              if (auto genricOp = dyn_cast<linalg::LinalgOp>(op)) {  // IT APPLYS VECTORIZATION ON ALL THE CODE, WITHOUT THE NEXT CONDITION
+                if ((op->getName().getStringRef()).str() != "linalg.fill"){
+                  //if (ClonedOpIndex == OpIndex){
                     IRRewriter rewriter(context);
                     OpBuilder builder(context);
       
                     llvm::ArrayRef<int64_t> emptyArrayRef;
 
                     llvm::ArrayRef<bool> boolArrayRef;
-
+                    
                     mlir::linalg::vectorize(rewriter, genricOp, /*vectorSizesinputVectorSizes=*/emptyArrayRef,
                      boolArrayRef /*scalableVecDims={}*/, false);
+                    
                     //genricOp->dump();
                   }
-                ClonedOpIndex++;
-                } });
+                
+             //  }
+                ClonedOpIndex++;} });
     }
     OpIndex++;
   }
-
   SmallVector<Node *, 2> ResChildNodes;
   for (const auto &innerVector : ChildNodesList)
   {
