@@ -9,7 +9,7 @@
 //===----------------------------------------------------------------------===//
 #include "ParallelizationTransformation.h"
 #include "mlir/Dialect/Transform/Utils/DiagnosedSilenceableFailure.h"
-//#include "/scratch/ia2280/LLVM/llvm-project/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp";
+#include "/scratch/ia2280/LLVM/llvm-project/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp";
 #pragma once
 //#include "/scratch/ia2280/LLVM/llvm-project/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp";
 using namespace mlir;
@@ -32,7 +32,109 @@ SmallVector<SmallVector<int64_t, 4>, 4>
 generateTileForAllOpCombinations(int64_t maxNumberLoops,
                                  const std::vector<int64_t> &possibleTileSizes);*/
 
+DiagnosedSilenceableFailure FuseIntoContainingOperation(Operation *containingOp, Operation* target,  IRRewriter &rewriter) {
 
+  SmallVector<Operation *> fusedOps;
+  //auto producerOps = state.getPayloadOps(getProducerOp());
+  //auto containingOps = state.getPayloadOps(getContainingOp());
+
+  /*if (!llvm::hasSingleElement(containingOps)) {
+    return emitDefiniteFailure()
+           << "requires exactly one containing_op handle (got "
+           << llvm::range_size(containingOps) << ")";
+  }*/
+
+
+  /*// If nothing to fuse, propagate success.
+  if (std::empty(producerOps)) {
+    results.set(cast<OpResult>(getFusedOp()), SmallVector<mlir::Operation *>{});
+    results.set(cast<OpResult>(getNewContainingOp()), {containingOp});
+    return DiagnosedSilenceableFailure::success();
+  }*/
+
+  // Helper function to find the next producer that should be fused. Take any
+  // producer that has a use inside the containing op.
+  /*SetVector<Operation *> remainingProducers(producerOps.begin(),
+                                            producerOps.end());
+  auto getNextProducer = [&]() -> FailureOr<Operation *> {
+    for (const auto &it : enumerate(remainingProducers)) {
+      Operation *producerOp = it.value();
+      // The containing op may be a user of producerOp: use isAncestor.
+      int64_t numUsesInContainingOp =
+          llvm::count_if(producerOp->getUsers(), [&](Operation *op) {
+            return containingOp->isAncestor(op);
+          });
+      // TODO: When resolving the TODO below (no duplicate ops), take an op
+      // that has no use among the remaining producers. This is a topological
+      // sorting.
+      if (numUsesInContainingOp > 0) {
+        if (numUsesInContainingOp == 1)
+          remainingProducers.erase(remainingProducers.begin() + it.index());
+        return producerOp;
+      }
+    }
+    return failure();
+  };*/
+  
+target->walk([&](Operation *producerOp)
+  {
+    // TEMP: Check if the operation is a "linalg.fill" operation
+    if ((producerOp->getName().getStringRef()).str() == "linalg.fill")
+    {
+        //std::cout<<"FILL FOUND"<<std::endl;
+          Diagnostic diag(producerOp->getLoc(),DiagnosticSeverity::Remark);
+          diag << "could not fuse " << *producerOp << " into " << *containingOp;
+          //std::cout<<"DIAG FOUND"<<std::endl;
+         auto [tiledOps, newContainingOp] =
+        tileAndFuseFirstExtractUse(rewriter, diag, producerOp, containingOp);
+        
+
+        //std::cout<<"TILE AND FUSE FOUND"<<std::endl;
+        if (!tiledOps.empty()) {
+          //tiledOps[0]->dump();
+          //std::cout<<"TILE FOUND"<<std::endl;
+          fusedOps.append(tiledOps);
+          if (newContainingOp) {
+            //std::cout<<"CONTAINOP FOUND"<<std::endl;
+            rewriter.eraseOp(containingOp);
+            containingOp = newContainingOp;
+          }
+        }else{
+          //std::cout<<"ELSE FOUND"<<std::endl;
+            SmallVector<Operation *> tiledContainingOpOperand =
+            tileAndFuseFirstExtractUseThroughContainingOpBlockArgument(
+            rewriter, diag, producerOp, containingOp);
+            if (!tiledContainingOpOperand.empty()) {
+              //std::cout<<"tiledContainingOpOperand FOUND"<<std::endl;
+              //tiledContainingOpOperand[0]->dump();
+              fusedOps.append(tiledContainingOpOperand);
+              //continue;
+            }else{
+              //std::cout<<"cloneAndFuseFirstUse FOUND"<<std::endl;
+              /*Operation *cloned =
+                cloneAndFuseFirstUse(rewriter, diag, producerOp, containingOp);
+                 cloned->dump();
+                if (cloned) {
+                
+                  fusedOps.push_back(cloned);
+                  //continue;
+                }*/
+            }
+        }
+        
+  
+
+   
+    //return DiagnosedSilenceableFailure::silenceableFailure(std::move(diag));
+     
+    } 
+  });
+
+
+ // results.set(cast<OpResult>(getFusedOp()), fusedOps);
+ // results.set(cast<OpResult>(getNewContainingOp()), {containingOp});
+  return DiagnosedSilenceableFailure::success();
+}
 
 Parallelization::Parallelization(mlir::TilingInterface *op,
                                  llvm::SmallVector<int64_t, 4> tileSizes,
@@ -89,9 +191,8 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
   MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
 
   // Get the top-level operation
-  Operation *target = ((mlir::OwningOpRef<Operation *> *)(*CodeIr)
-                           .getIr())
-                          ->get();
+  Operation *target = ((Operation *)(*CodeIr)
+                           .getIr());
 
   // Walk through operations in the target
   target->walk([&](Operation *op)
@@ -123,7 +224,7 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
         for (int64_t value : upperBounds) {
             llvm::SmallVector<int64_t, 4> dividers;
             for (int64_t i = 2; i < value; ++i) {
-                if (i > 9 && value % i == 0) {
+                if ( value % i == 0) {
                     dividers.push_back(i);
                 }
             }
@@ -135,7 +236,7 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
               generateTileForAllOpCombinations(NumberLoops, possibleTileSizes, upperBounds);
           tileCombinations.insert(tileCombinations.end(), newCombinations.begin(), newCombinations.end());
         }
-   /* std::cout << "Upper BOUNDS\n";
+        /* std::cout << "Upper BOUNDS\n";
         for (const int64_t value : upperBounds) {
           std::cout << value << " ";
           std::cout << std::endl;
@@ -164,7 +265,7 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
               tileCombinations.begin(),
               tileCombinations.end(),
               std::back_inserter(SelectedTileCombinations),
-              tileCombinations.size()/4,
+              1,
               std::mt19937{std::random_device{}()}
           );*/
       for (const auto &candidate : tileCombinations)
@@ -195,9 +296,8 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
   {
     for (auto node : ChildNodes)
     {
-      Operation *ClonedTarget = ((mlir::OwningOpRef<Operation *> *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
-                                     .getIr())
-                                    ->get();
+      Operation *ClonedTarget = ((Operation  *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
+                                     .getIr());
       Parallelization *parallelization = (Parallelization *)node->getTransformation();
 
       int ClonedOpIndex = 0;
@@ -208,7 +308,7 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
             if ((op->getName().getStringRef()).str() != "linalg.fill" ){
               
         
-              
+              auto start = std::chrono::high_resolution_clock::now();
               IRRewriter rewriter(context);
               OpBuilder builder(context);
             
@@ -224,9 +324,17 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
               //tilingResult->tileOp->dump();
               if (!failed(tilingResult))
                   rewriter.replaceOp(ClonedTileableOp, tilingResult->tileOp->getResults());    
-              //IRRewriter rewriter1(context);
-              //FuseIntoContainingOperation(tilingResult->tileOp, ClonedTarget, rewriter1);
-              
+              auto end = std::chrono::high_resolution_clock::now();
+              auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+              std::cout << "Time taken by Parallelization: " << duration.count() << " microseconds" << std::endl;
+
+              start = std::chrono::high_resolution_clock::now();
+              IRRewriter rewriter1(context);
+              FuseIntoContainingOperation(tilingResult->tileOp, ClonedTarget, rewriter1);
+              end = std::chrono::high_resolution_clock::now();
+              duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+              std::cout << "Time taken by  fusion: " << duration.count() << " microseconds" << std::endl;
+             
             }
           ClonedOpIndex++;
           } });
