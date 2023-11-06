@@ -11,6 +11,8 @@
 
 #include "EvaluationByExecution.h"
 
+#include "/scratch/ia2280/mlir_autoScheduler/MLScheduler/src/TransformDialectInterpreter.cpp"
+#pragma once
 using namespace mlir;
 std::string getTransformedCode(std::string inputCode, std::string transfromDialectString);
 std::string getEvaluation(std::string inputCode);
@@ -33,8 +35,8 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
     MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)CodeIr->cloneIr();
     
-    mlir::OwningOpRef<Operation *> *ClonedTarget = ((mlir::OwningOpRef<Operation *> *)(*node->getTransformedCodeIr()).getIr());
-    mlir::OwningOpRef<Operation *> *op = ((mlir::OwningOpRef<Operation *> *)(*(ClonedCode))
+    Operation *ClonedTarget = ((Operation *)(*node->getTransformedCodeIr()).getIr());
+    Operation *op = ((Operation *)(*(ClonedCode))
                                      .getIr());
     // Printing the transformed code
     if (std::getenv("AS_VERBOSE") != nullptr)
@@ -56,7 +58,7 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
                 llvm::raw_string_ostream debugOut(str);
                 if (node->getTransformation() != NULL)
                 {
-                    debugFile << "###########################################################################" << std::endl;
+                    debugFile << "###################################" << std::endl;
                     debugFile << "Transformtion : " << std::endl;
                     for (const auto &transformation : node->getTransformationList())
                     {
@@ -64,14 +66,14 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
                     }
                     debugFile << std::endl;
                 }
-                (**op)->print(debugOut);
+                op->print(debugOut);
 
                 debugFile << str << std::endl;
                 debugFile.close();
             }
         }
     }
-    mlir::PassManager pmBefore((*op).get()->getName());
+    /*mlir::PassManager pmBefore((*op).get()->getName());
 
     // Apply any generic pass manager command line options and run the pipeline.
     applyPassManagerCLOptions(pmBefore);
@@ -92,12 +94,13 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     optPMBefore.addPass(mlir::bufferization::createFinalizingBufferizePass());
     pmBefore.addPass(mlir::createBufferizationToMemRefPass());
     optPMBefore.addPass(mlir::bufferization::createBufferDeallocationPass());
-    if (!mlir::failed(pmBefore.run(*(*op))))
+    if (!mlir::failed(pmBefore.run(*(*op))))*/
 
     // TEMP : Transforming the code using the transform dialect interpreter; it uses a system call, and applies lowerings to the results of the vectorization
-    (**op)->print(output);
-    //std::cout<<str1<<std::endl;
-    std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n %f = transform.structured.match ops{[\"func.func\"]} in %variant_op : (!transform.any_op) -> !transform.any_op \n transform.apply_patterns to %f {  \n transform.apply_patterns.vector.lower_contraction lowering_strategy = \"outerproduct\" \n transform.apply_patterns.vector.transfer_permutation_patterns \n transform.apply_patterns.vector.lower_multi_reduction lowering_strategy = \"innerparallel\" \n transform.apply_patterns.vector.split_transfer_full_partial split_transfer_strategy = \"vector-transfer\" \n transform.apply_patterns.vector.transfer_to_scf max_transfer_rank = 1 full_unroll = true \n transform.apply_patterns.vector.lower_transfer max_transfer_rank = 1 \n transform.apply_patterns.vector.lower_shape_cast \n transform.apply_patterns.vector.lower_transpose lowering_strategy = \"shuffle_1d\" \n transform.apply_patterns.canonicalization} \n : !transform.any_op}";
+    //op->print(output);
+   
+
+    /*std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n %f = transform.structured.match ops{[\"func.func\"]} in %variant_op : (!transform.any_op) -> !transform.any_op \n transform.apply_patterns to %f {  \n transform.apply_patterns.vector.lower_contraction lowering_strategy = \"outerproduct\" \n transform.apply_patterns.vector.transfer_permutation_patterns \n transform.apply_patterns.vector.lower_multi_reduction lowering_strategy = \"innerparallel\" \n transform.apply_patterns.vector.split_transfer_full_partial split_transfer_strategy = \"vector-transfer\" \n transform.apply_patterns.vector.transfer_to_scf max_transfer_rank = 1 full_unroll = true \n transform.apply_patterns.vector.lower_transfer max_transfer_rank = 1 \n transform.apply_patterns.vector.lower_shape_cast \n transform.apply_patterns.vector.lower_transpose lowering_strategy = \"shuffle_1d\" \n transform.apply_patterns.canonicalization} \n : !transform.any_op}";
     std::string transformedString = getTransformedCode(str1, transformDialectString);
     if (transformedString == "process did not exit normally")
     {
@@ -105,24 +108,29 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     }
     // TEMP : The interpreter introduces an extra "module {}", removing it
     std::string cleanedString = removeExtraModuleTagCreated(transformedString);
+    //std::cout<<cleanedString<<std::endl;
+    // Continue the lowerings of the code to llvm runnable code*/
+    std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n %named_conv = transform.structured.match ops{[\"linalg.matmul\"]} in %variant_op : (!transform.any_op) -> !transform.any_op \n %forall_l1, %conv_l1 = transform.structured.tile_to_forall_op %named_conv tile_sizes [10, 10]: (!transform.any_op) -> (!transform.any_op, !transform.any_op) }";
 
-    // Continue the lowerings of the code to llvm runnable code
-    mlir::OwningOpRef<Operation *> module = parseSourceString(cleanedString, (*op)->getContext());
-
+  
+    //mlir::OwningOpRef<Operation *> module = parseSourceString(transformDialectString, (op)->getContext());
+    //(*module)->dump();
     std::string outString;
     llvm::raw_string_ostream output_run(outString);
-  
-    mlir::PassManager pm((module).get()->getName());
-     
+    auto start = std::chrono::high_resolution_clock::now();
+    mlir::PassManager pm((op)->getName());
+    
+    
     // Apply any generic pass manager command line options and run the pipeline.
     applyPassManagerCLOptions(pm);
-    /*
+    
     bufferization::OneShotBufferizationOptions options;
     options.allowReturnAllocs = true;
     options.bufferizeFunctionBoundaries = true;
     options.createDeallocs = true;
     options.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
-
+     pm.addPass(createTransformDialectInterpreterPass(transformDialectString));
+    //pm.addPass(createTestTransformDialectEraseSchedulePass());
     pm.addPass(mlir::createLoopInvariantCodeMotionPass());
     pm.addPass(mlir::createCSEPass());
     pm.addPass(mlir::createCanonicalizerPass());
@@ -130,16 +138,16 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
 
     pm.addPass(mlir::bufferization::createEmptyTensorEliminationPass());
     pm.addPass(mlir::bufferization::createEmptyTensorToAllocTensorPass());
-
+    
     pm.addPass(mlir::bufferization::createOneShotBufferizePass(options));
-    */
-    mlir::OpPassManager &optPM = pm.nest<mlir::func::FuncOp>();
 
-    /* optPM.addPass(mlir::bufferization::createBufferDeallocationPass());
-    optPM.addPass(mlir::bufferization::createFinalizingBufferizePass());
-    pm.addPass(mlir::createBufferizationToMemRefPass());
+    mlir::OpPassManager &optPM = pm.nest<mlir::func::FuncOp>();
+    
     optPM.addPass(mlir::bufferization::createBufferDeallocationPass());
-    */
+    //optPM.addPass(mlir::bufferization::createFinalizingBufferizePass());
+    //pm.addPass(mlir::createBufferizationToMemRefPass());
+    //optPM.addPass(mlir::bufferization::createBufferDeallocationPass());
+    
     optPM.addPass(mlir::createConvertLinalgToLoopsPass());
     optPM.addPass(mlir::createForEachThreadLowering());
     pm.addPass(mlir::createConvertVectorToSCFPass());
@@ -149,20 +157,28 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     optPM.addPass(memref::createExpandStridedMetadataPass());
     pm.addPass(mlir::createFinalizeMemRefToLLVMConversionPass());
     pm.addPass(mlir::createConvertSCFToCFPass());
-    optPM.addPass(mlir::createLowerAffinePass());
+    pm.addPass(mlir::createLowerAffinePass());
     optPM.addPass(mlir::createArithToLLVMConversionPass());
+ 
     pm.addPass(createConvertOpenMPToLLVMPass());
-    pm.addPass(createConvertVectorToLLVMPass());
+     pm.addPass(createConvertVectorToLLVMPass());
     pm.addPass(createConvertControlFlowToLLVMPass());
     pm.addPass(mlir::createConvertFuncToLLVMPass());
     pm.addPass(mlir::createReconcileUnrealizedCastsPass());
 
-    if (!mlir::failed(pm.run(*(module))))
-        (*module)->print(output_run);
+    if (!mlir::failed(pm.run((op))))
+        (op)->print(output_run);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    
+
 
     // Getting the evaluation uisng mlir-cpu-runner, the function uses a system call
+    auto start_eval = std::chrono::high_resolution_clock::now();
     std::string OutputData = getEvaluation(outString);
-
+    auto end_eval = std::chrono::high_resolution_clock::now();
+    auto duration_eval = std::chrono::duration_cast<std::chrono::microseconds>(end_eval - start_eval);
+    
     // Printing the evaluation 
     if (std::getenv("AS_VERBOSE") != nullptr)
     {
@@ -176,6 +192,8 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
                 if (node->getTransformation() != NULL)
                 {
                     debugFile << OutputData << std::endl;
+                    debugFile << "Time taken by Lowerings: " << duration.count() << " microseconds" << std::endl;
+                    debugFile << "Time taken by Evaluation: " << duration_eval.count() << " microseconds" << std::endl;
                 }
                 debugFile.close();
             }
@@ -242,7 +260,7 @@ pid_t popen2(const char *command, int *infp, int *outfp)
 
     return pid;
 }
-pid_t popen22(const char *command, int *infp, int *outfp)
+/*pid_t popen22(const char *command, int *infp, int *outfp)
 {
     int p_stdin[2], p_stdout[2];
     pid_t pid;
@@ -295,7 +313,7 @@ pid_t popen22(const char *command, int *infp, int *outfp)
         *outfp = p_stdout[READ];
 
     return pid;
-}
+}*/
 
 std::string removeExtraModuleTagCreated(std::string input) // TODO: Figure out why Transform Dialect Interpreter introduces an extra module
 {
@@ -383,7 +401,24 @@ std::string getEvaluation(std::string inputCode)
     {
         int exit_status = WEXITSTATUS(status);
         printf("Cpu Runner Child process exited with status: %d\n", exit_status);
-        return output_data.data();
+         
+        std::string evalString = "";
+        std::string data(output_data.begin(), output_data.end());
+
+        size_t lastGFLOPSPos = data.rfind("GFLOPS"); // Find the position of the last "GFLOPS"
+        if (lastGFLOPSPos != std::string::npos) {
+            std::string substring = data.substr(0, lastGFLOPSPos-1); // Extract the substring before the last "GFLOPS"
+            size_t spacePos = substring.rfind("GFLOPS"); // Find the position of the last space in the substring
+
+            if (spacePos != std::string::npos) {
+                evalString = substring.substr(spacePos + 6); // Extract the number string after the last space   
+            }
+        } else {
+            std::cout << "No GFLOPS found in the input string." << std::endl;
+        }
+        std::cout<<evalString<<std::endl;
+
+        return evalString;
     }
     else
     {
@@ -396,7 +431,7 @@ std::string getEvaluation(std::string inputCode)
 /// The function uses the mlir-opt tool to run the transform dialect
 /// interprter, returns the transformed code
 
-std::string getTransformedCode(std::string inputCode, std::string transfromDialectString)
+/*std::string getTransformedCode(std::string inputCode, std::string transfromDialectString)
 {
     int in_fd, out_fd;
     pid_t pid;
@@ -467,4 +502,4 @@ std::string getTransformedCode(std::string inputCode, std::string transfromDiale
         printf("OPT process did not exit normally.\n");
         return "process did not exit normally";
     }
-}
+}*/

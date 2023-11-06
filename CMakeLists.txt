@@ -63,6 +63,8 @@ get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 
 add_llvm_executable(AutoSchedulerML 
 main.cpp
+src/TransformDialectInterpreter.cpp
+src/BeamSearch.cpp
 src/VectorizationTransformation.cpp
 src/ParallelizationTransformation.cpp
 src/TilingTransformation.cpp
