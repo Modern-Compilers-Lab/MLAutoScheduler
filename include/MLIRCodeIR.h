@@ -34,7 +34,6 @@ using namespace mlir;
 class MLIRCodeIR : public CodeIR{
     private:
         //mlir::OwningOpRef<Operation*>* MLIRIr; // Representation of code.
-
     public:
         // MLIRCodeIR();
 
@@ -49,4 +48,6 @@ class MLIRCodeIR : public CodeIR{
         /// Overrides the cloneIr() method from the base class CodeIR.
         /// Returns a pointer to a new instance of MLIRCodeIR.
         CodeIR* cloneIr() override;
+
+        CodeIR* setMLIRIR(Operation* module);
 };
