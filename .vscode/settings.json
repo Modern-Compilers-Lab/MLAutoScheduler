@@ -69,7 +69,14 @@
         "variant": "cpp",
         "vector": "cpp",
         "algorithm": "cpp",
-        "*.inc": "cpp"
+        "*.inc": "cpp",
+        "charconv": "cpp",
+        "codecvt": "cpp",
+        "regex": "cpp",
+        "shared_mutex": "cpp",
+        "strstream": "cpp",
+        "type_traits": "cpp",
+        "execution": "cpp"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++"
 }
