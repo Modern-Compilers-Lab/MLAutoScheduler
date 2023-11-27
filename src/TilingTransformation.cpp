@@ -203,7 +203,7 @@ SmallVector<Node* , 2> Tiling::createTilingCandidates(Node *node,
 
         int ClonedOpIndex = 0;
         ClonedTarget->walk([&](Operation *op) {
-          op->dump();
+          // op->dump();
               if (linalg::LinalgOp ClonedTileableOp 
                                 = dyn_cast<linalg::LinalgOp>(op)) {
                   if (ClonedOpIndex == OpIndex){
@@ -214,7 +214,7 @@ SmallVector<Node* , 2> Tiling::createTilingCandidates(Node *node,
                 ClonedOpIndex++;
                 }     
 
-            op->dump();
+            // op->dump();
         });  
       }
       OpIndex++;

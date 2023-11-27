@@ -232,7 +232,15 @@ int main(int argc, char **argv)
   std::ofstream performanceResults(performanceResultPath, std::ios_base::app);
   if (!performanceResults.is_open())
   {
-    std::cout << "Failed to open file: " << std::endl;
+    std::cout << "Failed to open performance file: " << std::endl;
+  }
+
+
+  std:: string accelerationPath = filesource + "acceleration.txt";
+  std::ofstream acceleration(accelerationPath, std::ios_base::app);
+  if (!acceleration.is_open())
+  {
+    std::cout << "Failed to open acceleration file: " << std::endl;
   }
 
 
@@ -242,8 +250,8 @@ int main(int argc, char **argv)
   int64_t desiredTileSize3 = 32;
 
   //2D
-  int64_t desiredTileSize1_2D = 8;
-  int64_t desiredTileSize2_2D = 8;
+  int64_t desiredTileSize1_2D = 32;
+  int64_t desiredTileSize2_2D = 32;
 
   EvaluationByExecution evaluator;
 
@@ -264,8 +272,8 @@ int main(int argc, char **argv)
   std::string bigRooteval = evaluator.evaluateTransformation(rootNode);
   std::string bigRooteval2D = evaluator.evaluateTransformation(rootNode2D);
 
-  performanceResults << benchmark << "3D" <<","<<bigRooteval<<std::endl;
-  performanceResults << benchmark << "2D" <<","<<bigRooteval2D<<std::endl;
+  performanceResults << benchmark << "3D" << ","<< "NoTiling"<<","<<bigRooteval<<std::endl;
+  performanceResults << benchmark << "2D" << ","<< "NoTiling"<<","<<bigRooteval2D<<std::endl;
 
   Node* firstChild = generateSingleCandidate_3D(desiredTileSize1, desiredTileSize2, desiredTileSize3, CodeIr,&context);
   root->createChild(firstChild);
@@ -273,20 +281,21 @@ int main(int argc, char **argv)
   Node* firstChild2D = generateSingleCandidate_2D(desiredTileSize1_2D, desiredTileSize2_2D, CodeIr2D,&context);
   root2D->createChild(firstChild2D);
 
-  performanceResults << benchmark << "3D" <<","<<firstChild->getEvaluation()<<std::endl;
-  performanceResults << benchmark << "2D" <<","<<firstChild2D->getEvaluation()<<std::endl;
+  performanceResults << benchmark << "3D" << ","<< "DefaultParameters"<<","<<firstChild->getEvaluation()<<std::endl;
+  performanceResults << benchmark << "2D"<< ","<< "DefaultParameters" <<","<<firstChild2D->getEvaluation()<<std::endl;
 
   Node* head = root;
   Node* head2D = root2D;
 
-  int maxLoopRun = 100;
-  int maxLoopRun2D = 100;
+  int maxLoopRun = 100; // 7 choice * 7 choices * 7 choices = 
+  int maxLoopRun2D = 100; // 7 choices * 7 choices
 
   int stepSize = 8;
 
 
 // UTILITY TIME
   auto start = std::chrono::system_clock::now();
+  auto hillEnd3D = start;
 //Run Tests for 3D Tiling
   std::string bestChildEvaluation3D = "";
   while(maxLoopRun > 0) {
@@ -330,7 +339,10 @@ int main(int argc, char **argv)
 
   // only proceed if change leads to better execution time
   if (root_evaluation_time > bestChildTime){
-    break;
+      auto t = std::chrono::system_clock::now(); // ensure only the first break is recorded
+      if (hillEnd3D == start){
+         hillEnd3D = t ;
+      }
   }
   else{
     
@@ -350,24 +362,27 @@ int main(int argc, char **argv)
   }
   maxLoopRun -= 1;
 }
-
-performanceResults << benchmark << "3D" <<","<<bestChildEvaluation3D<<std::endl;
-
-// Some computation here
 auto end = std::chrono::system_clock::now();
+std::chrono::duration<double> elapsed_seconds_full = end-start;
+std::chrono::duration<double> elapsed_seconds_hill = hillEnd3D-start;
 
-std::chrono::duration<double> elapsed_seconds = end-start;
-std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+if (hillEnd3D == start){ //if hillEnd is same as starttime, then hillclimbing did the full execution
+  elapsed_seconds_hill = elapsed_seconds_full;
+}
 
-std::cout << "finished computation 3D " << std::ctime(&end_time)
-          << "elapsed time: " << elapsed_seconds.count() << "s"
-          << std::endl;
+acceleration << benchmark << "3D" << ","<< "fullExecution"<<"," << elapsed_seconds_full.count()<<std::endl;
+acceleration << benchmark << "3D" << ","<< "hillClimbing"<<"," << elapsed_seconds_hill.count()<<std::endl;
 
-// double ExecutionTime3D = elapsed_seconds.count();
+performanceResults << benchmark << "3D" << ","<< "BestParameters"<<","<<bestChildEvaluation3D<<std::endl;
+
+
+
 
 // Run Tests for 2D Tiling
   std::string bestChildEvaluation2D = "";
-  auto st = std::chrono::system_clock::now();
+  auto start_time = std::chrono::system_clock::now();
+  auto hillEnd2D = start_time;
+
   while(maxLoopRun2D > 0) {
   
   Node* neighbor1 = generateSingleCandidate_2D(desiredTileSize1_2D - stepSize, desiredTileSize2_2D, CodeIr2D,&context);
@@ -403,7 +418,10 @@ std::cout << "finished computation 3D " << std::ctime(&end_time)
 
   //only proceed if change leads to better execution time
   if (root_evaluation_time > bestChildTime){
-    break;
+      auto time = std::chrono::system_clock::now();
+      if (hillEnd2D == start_time){ //recorded once
+        hillEnd2D = time; 
+      }
   }
   else{
     
@@ -413,42 +431,32 @@ std::cout << "finished computation 3D " << std::ctime(&end_time)
       auto tokens = split(transformation, " "); // T and 24, 16, 16 )
       auto parameter_one = split(tokens[1], ",")[0]; //"24"
       auto parameter_two = split(tokens[2], ",")[0]; //"16"
-      // auto parameter_three = split(tokens[3], ",")[0]; //"16"
 
       desiredTileSize1_2D = std::atol(parameter_one.c_str());
       desiredTileSize2_2D = std::atol(parameter_two.c_str());
-      // desiredTileSize3 = std::atol(parameter_three.c_str());
 
       firstChild2D = bestChildNeighbour; // use the parameters for the root 
   }
   maxLoopRun2D -= 1;
 }
 
-performanceResults << benchmark << "2D" <<","<<bestChildEvaluation2D<<std::endl;
-// Some computation here
-auto end2 = std::chrono::system_clock::now();
 
-std::chrono::duration<double> elapsed_s = end2-st;
+auto end_time = std::chrono::system_clock::now();
+std::chrono::duration<double> elapsed_time_full = end_time - start_time;
+std::chrono::duration<double> elapsed_time_hill = hillEnd2D - start_time;
 
-std::time_t end_t = std::chrono::system_clock::to_time_t(end2);
+if (hillEnd3D == start){ //if hillEnd is same as starttime, then hillclimbing did the full execution
+  elapsed_time_hill = elapsed_seconds_full;
+}
+acceleration << benchmark << "2D" << ","<< "fullExecution"<<"," << elapsed_time_full.count()<<std::endl;
+acceleration << benchmark << "2D" << ","<< "hillClimbing"<<"," << elapsed_time_hill.count()<<std::endl;
 
-std::cout << "finished computation 2D " << std::ctime(&end_t)
-          << "elapsed time: " << elapsed_s.count() << "s"
-          << std::endl;
 
-// double ExecutionTime2D = elapsed_seconds.count();
+performanceResults << benchmark << "2D"<< ","<< "BestParameters"<<","<<bestChildEvaluation2D<<std::endl;
 
+// Writing to files
 root->setEvaluation(bigRooteval);
-std::cout << "End of exploration for 3D!"<<std::endl;
-
 root2D->setEvaluation(bigRooteval2D);
-std::cout << "End of exploration for 2D!"<<std::endl;
-
-std::cout<<std::endl;
-std::cout<<"Best Tile Size2D: T("<<desiredTileSize1_2D <<", "<<desiredTileSize2_2D <<")"<<std::endl;
-
-std::cout<<std::endl;
-std::cout<<"Best Tile Size3D: T("<<desiredTileSize1 <<", "<<desiredTileSize2 <<", "<<desiredTileSize3 <<")"<<std::endl;
 
 performanceResults << benchmark <<"3D," << "BestTileSize" <<","<<desiredTileSize1<<", "<<desiredTileSize2<<", "<<desiredTileSize3<<std::endl;
 performanceResults << benchmark << "2D," << "BestTileSize" <<","<<desiredTileSize1_2D<<", "<<desiredTileSize2_2D<<std::endl;
@@ -465,7 +473,6 @@ head2D->printSchedule(outputStringStream3);
 outputStringStream3 << "]\n";
 outputStringStream3 <<"Best Tile Size 2D: T(:"<<desiredTileSize1_2D <<", "<<desiredTileSize2_2D <<")}";
 std::string outputString3 = outputStringStream3.str();
-// std::cout<<outputString2<<std::endl;
 
 std::string filename = "_eval.json";
 
@@ -491,6 +498,7 @@ outputFile3D << outputString3;
 outputFile2D.close();
 outputFile3D.close();
 performanceResults.close();
+acceleration.close();
 return 0;
 };
   
@@ -549,7 +557,7 @@ return 0;
 
   // for (auto ChildNode : Interlist)
   // {
-  //     SmallVector<Node* , 2>   list1 = Tiling::createTilingCandidates(ChildNode, &context/*(ChildNode->getTransformedCodeIr())*/);
+  //SmallVector<Node* , 2>   list1 = Tiling::createTilingCandidates(ChildNode, &context/*(ChildNode->getTransformedCodeIr())*/);
   //   // SmallVector<Node *, 2> list = Parallelization::createVectorizationCandidates(ChildNode, &context /*(ChildNode->getTransformedCodeIr())*/);
 
   //   // std::cout<<list1.size()<<std::endl;
