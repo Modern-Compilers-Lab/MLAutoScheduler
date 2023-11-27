@@ -11,6 +11,7 @@ def generate_speedup(tile_dimension):
     }
     return speedup
 
+
 # Data reading and processing.
 perf_data = defaultdict(dict)
 with open("performanceResults.txt", "r") as f:

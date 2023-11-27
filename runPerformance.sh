@@ -8,7 +8,7 @@ cd /Users/ericasare/Desktop/Desktop/Mac2023/School/Fall2023NewYork/Capstone/MLSc
 > /Users/ericasare/Desktop/Desktop/Mac2023/School/Fall2023NewYork/Capstone/MLScheduler/acceleration.txt
 
 # Loop to run the commands 5 times
-for i in {1..2}
+for i in {1..5}
 do
     for operation in conv1d conv2d conv3d matmul
     do

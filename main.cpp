@@ -375,9 +375,6 @@ acceleration << benchmark << "3D" << ","<< "hillClimbing"<<"," << elapsed_second
 
 performanceResults << benchmark << "3D" << ","<< "BestParameters"<<","<<bestChildEvaluation3D<<std::endl;
 
-
-
-
 // Run Tests for 2D Tiling
   std::string bestChildEvaluation2D = "";
   auto start_time = std::chrono::system_clock::now();

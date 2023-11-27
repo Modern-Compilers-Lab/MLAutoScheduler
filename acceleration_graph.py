@@ -54,6 +54,6 @@ hill_climbing_times_3D = [sum(data["3D"][benchmark]["hillClimbing"])/len(data["3
 full_execution_times_2D = [sum(data["2D"][benchmark]["fullExecution"])/len(data["2D"][benchmark]["fullExecution"]) for benchmark in benchmarks]
 full_execution_times_3D = [sum(data["3D"][benchmark]["fullExecution"])/len(data["3D"][benchmark]["fullExecution"]) for benchmark in benchmarks]
 
-# Call the function to create and save the plot
+# Call the function to create and save plots
 plot_comparison(benchmarks, hill_climbing_times_2D, full_execution_times_2D , '2D_Time_Graph.png')
 plot_comparison(benchmarks, hill_climbing_times_3D, full_execution_times_3D , '3D_Time_Graph.png')
