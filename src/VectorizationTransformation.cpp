@@ -7,21 +7,23 @@
 /// contains the declartion of the Vectorization transformation
 ///
 //===----------------------------------------------------------------------===//
-#include "VectorizationTransformation.h"
+
 
 #include "mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.h"
 #include <stdio.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#define READ 0
-#define WRITE 1
 #include "mlir/Target/LLVMIR/Dialect/All.h"
 #include "mlir/InitAllDialects.h"
-#include "/scratch/ia2280/mlir_autoScheduler/MLScheduler/src/TransformDialectInterpreter.cpp"
-//#include "/scratch/ia2280/LLVM/llvm-project/mlir/test/lib/Dialect/Transform/TestTransformDialectInterpreter.h"
-#pragma once
 
-// #include "/home/nassimiheb/MLIR/llvm-project/mlir/test/lib/Dialect/Linalg/TestLinalgTransforms.cpp"
+#include "VectorizationTransformation.h"
+#include "TransformDialectInterpreter.h"
+#include "TransformInterpreterPassBase.h"
+
+#define READ 0
+#define WRITE 1
+
+#pragma once
 
 using namespace mlir;
 std::string removeVectExtraModuleTagCreated(std::string input) // TODO: Figure out why Transform Dialect Interpreter introduces an extra module
@@ -162,10 +164,26 @@ std::string getVectorizedCode(std::string inputCode, std::string transfromDialec
     return "process did not exit normally";
   }
 }
+
+mlir::Operation * DecomposeConv2dOp(mlir::Operation * Target){
+
+  std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n   %conv = transform.structured.match ops{[\"linalg.conv_2d_nhwc_hwcf\"]} in %variant_op : (!transform.any_op) -> !transform.any_op %decomposed = transform.structured.decompose %conv: (!transform.any_op) -> !transform.any_op }";
+
+  mlir::PassManager pm((Target)->getName());
+
+  // Apply any generic pass manager command line options and run the pipeline.
+  applyPassManagerCLOptions(pm);
+  
+  pm.addPass(createTransformDialectInterpreterPass(transformDialectString));
+  if (!mlir::failed(pm.run((Target)))){
+    return Target;
+  } 
+}
+
+
 Vectorization::Vectorization(mlir::linalg::LinalgOp *op,
                              mlir::MLIRContext *context)
 {
-
   this->op = op;
   this->context = context;
 }
@@ -174,14 +192,6 @@ std::string Vectorization::printTransformation()
 {
 
   std::string result = "V( ";
-  // Iterate over the elements of the vector and append them to the string
-  // for (size_t i = 0; i < (tileSizes).size(); ++i) {
-  //     result += std::to_string((tileSizes)[i]);
-
-  //     if (i != (tileSizes).size() - 1) {
-  //         result += ", ";
-  //     }
-  // }
   result += " )";
 
   return result;
@@ -254,35 +264,43 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
   ChildNodes.push_back(ChildNode);
 
   ChildNodesList.push_back(ChildNodes);
-  int OpIndex = 0;
+  //int OpIndex = 0;
   for (auto ChildNodes : ChildNodesList)
   {
     for (auto node : ChildNodes)
     {
-      Operation *ClonedTarget = ((Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
+      mlir::Operation *ClonedTarget = ((mlir::Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
+                                     .getIr());
+      
+      //int ClonedOpIndex = 0;
+      // Conv2d Decomposition 
+      mlir::Operation *DecomposedTarget = DecomposeConv2dOp(ClonedTarget);
+      MLIRCodeIR *DecomposedCodeIr = (MLIRCodeIR *)CodeIr->setMLIRIR(DecomposedTarget);
+      node->setTransformedCodeIr(DecomposedCodeIr);
+      // End Conv2d Decomposition 
+
+      mlir::Operation *Target = ((mlir::Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
                                      .getIr());
       Vectorization *vectorization = (Vectorization *)node->getTransformation();
 
-      int ClonedOpIndex = 0;
-
-      auto start = std::chrono::high_resolution_clock::now();
+      // auto start = std::chrono::high_resolution_clock::now();
       std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n   %func = transform.structured.match ops{[\"func.func\"]} in %variant_op: (!transform.any_op) -> !transform.any_op \n %func_0 = transform.structured.vectorize %func {vectorize_padding}: (!transform.any_op) -> (!transform.any_op) \n %func_01 = transform.structured.hoist_redundant_vector_transfers %func_0 :(!transform.any_op) -> (!transform.any_op) \n transform.structured.hoist_redundant_tensor_subsets %func_01 :(!transform.any_op) -> () }";
 
-      mlir::PassManager pm((ClonedTarget)->getName());
+      mlir::PassManager pm((Target)->getName());
 
       // Apply any generic pass manager command line options and run the pipeline.
       applyPassManagerCLOptions(pm);
       
       pm.addPass(createTransformDialectInterpreterPass(transformDialectString));
-      if (!mlir::failed(pm.run((ClonedTarget))))
+      if (!mlir::failed(pm.run((Target))))
       {
-        MLIRCodeIR *ClonedCodeIr = (MLIRCodeIR *)CodeIr->setMLIRIR(ClonedTarget);
+        MLIRCodeIR *ClonedCodeIr = (MLIRCodeIR *)CodeIr->setMLIRIR(Target);
         node->setTransformedCodeIr(ClonedCodeIr);
       }
 
-      auto end = std::chrono::high_resolution_clock::now();
+      /*auto end = std::chrono::high_resolution_clock::now();
       auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-      std::cout << "Time taken by vectorization: " << duration.count() << " microseconds" << std::endl;
+      std::cout << "Time taken by vectorization: " << duration.count() << " microseconds" << std::endl;*/
       /*
       //std::string str1;
       //llvm::raw_string_ostream output(str1);
@@ -351,13 +369,12 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
              //  }
                 ClonedOpIndex++;} });*/
     }
-    OpIndex++;
+    //OpIndex++;
   }
   SmallVector<Node *, 2> ResChildNodes;
   for (const auto &innerVector : ChildNodesList)
   {
     ResChildNodes.insert(ResChildNodes.end(), innerVector.begin(), innerVector.end());
   }
-  // std::cout << "ERROR\n";
   return ResChildNodes;
 }
