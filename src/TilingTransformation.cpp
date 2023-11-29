@@ -141,9 +141,8 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
 
   MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
 
-  Operation *target = ((mlir::OwningOpRef<Operation *> *)(*CodeIr)
-                           .getIr())
-                          ->get();
+  Operation *target = ((Operation  *)(*CodeIr)
+                           .getIr());
   SmallVector<Node *, 2> ChildNodes;
 
   // tileCombinations = generateTileCombinations(loops.size(),
@@ -189,7 +188,7 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
                dividers.push_back(1);
             }
             for (int64_t i = 2; i <= value; ++i) {
-                if (value % i == 0) {
+                if (i < 50 && value % i == 0) {
                     dividers.push_back(i);
                 }
             }
@@ -235,14 +234,14 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
          //tileCombinations.erase(tileCombinations.begin());
          
           /*tileCombinations = generateTileCombinations(loops.size(),
-                                      possibleTileSizes);
+                                      possibleTileSizes);*/
           std::sample(
             tileCombinations.begin(),
             tileCombinations.end(),
             std::back_inserter(SelectedTileCombinations),
-            tileCombinations.size()/6,
-            std::mt19937{std::random_device{}()});*/
-          for (const auto& candidate : tileCombinations){
+            1,
+            std::mt19937{std::random_device{}()});
+          for (const auto& candidate : SelectedTileCombinations){
 
  
             MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)CodeIr->cloneIr();
@@ -309,9 +308,8 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
   {
     for (auto node : ChildNodes)
     {
-      Operation *ClonedTarget = ((mlir::OwningOpRef<Operation *> *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
-                                     .getIr())
-                                    ->get();
+      Operation *ClonedTarget = ((Operation*)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
+                                     .getIr());
       Tiling *tiling = (Tiling *)node->getTransformation();
 
       int ClonedOpIndex = 0;

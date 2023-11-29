@@ -50,9 +50,6 @@ std::string Interchange::printTransformation()
 }
 void Interchange::applyTransformation(CodeIR CodeIr)
 {
-  mlir::OwningOpRef<Operation *> *module =
-      (mlir::OwningOpRef<Operation *> *)CodeIr.getIr();
-
   IRRewriter rewriter(this->context);
 }
 
@@ -71,9 +68,8 @@ SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
   
   // Get the target operation from the provided node's transformed code
   MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
-  Operation *target = ((mlir::OwningOpRef<Operation *> *)(*CodeIr)
-                           .getIr())
-                          ->get();
+  Operation *target = ((Operation *)(*CodeIr)
+                           .getIr());
   int counter = 0;
 
   // Traverse the operations in the target operation's hierarchy
@@ -125,9 +121,8 @@ SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
     for (auto node : ChildNodes)
     {
       // Get the target operation from the child node's transformed code
-      Operation *ClonedTarget = ((mlir::OwningOpRef<Operation *> *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
-                                     .getIr())
-                                    ->get();
+      Operation *ClonedTarget = ((Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
+                                     .getIr());
       Interchange *inter = (Interchange *)node->getTransformation();
 
       std::vector<unsigned> candidate = inter->getInterchangeVector();
@@ -141,7 +136,7 @@ SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
                   dyn_cast<linalg::LinalgOp>(op)) {
              // TEMP: Check if the operation is not 'linalg.fill' and ClonedOpIndex is 3 
             if ((op->getName().getStringRef()).str() != "linalg.fill"  ){
-         
+                //auto start = std::chrono::high_resolution_clock::now();
                 IRRewriter rewriter(context);
                 rewriter.setInsertionPoint(ClonedInterchangeableOp);
                 FailureOr<linalg::GenericOp> generalizeResult =
@@ -154,6 +149,9 @@ SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
                     linalg::interchangeGenericOp(rewriter,
                                                 genericOp, 
                                                 interchangeVector);
+                /*auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+                std::cout << "Time taken by Interchange: " << duration.count() << " microseconds" << std::endl;*/
                
             }
           ClonedOpIndex++;
