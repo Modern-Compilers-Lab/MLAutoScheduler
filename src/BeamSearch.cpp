@@ -30,7 +30,7 @@ Node * BeamSearch::runSearchMethod(Node * root){
     Node * BestNode = clone;
 
     // Create an evaluator for transformation evaluations
-    EvaluationByExecution evaluator =  EvaluationByExecution(this->functionName + "_logs_best_beam_search_test.txt");
+    EvaluationByExecution evaluator =  EvaluationByExecution(this->functionName + "_logs_best_beam_search_test_49x512x4608.txt");
     
     while(!exploration_queue.empty() && level != 4){
         std::cout << "################# Level = "<<level<< " ###############\n";
