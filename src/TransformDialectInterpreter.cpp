@@ -14,16 +14,16 @@
 //#include "TestTransformDialectExtension.h"
 #include "mlir/Dialect/Transform/IR/TransformInterfaces.h"
 #include "mlir/Dialect/Transform/IR/TransformOps.h"
-#include "mlir/Dialect/Transform/Transforms/TransformInterpreterPassBase.h"
+#include "TransformInterpreterPassBase.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "TransformDialectInterpreter.h"
-#pragma once
+
+
 using namespace mlir;
 
-namespace {
+
 /// Simple pass that applies transform dialect ops directly contained in a
 /// module.
 
@@ -32,10 +32,10 @@ class OpPassWrapper : public PassWrapper<Derived, OperationPass<>> {};
 
 
 class TransformDialectInterpreterPass
-    : public transform::TransformInterpreterPassBase<
+    : public TransformInterpreterPassBaseModified<
           TransformDialectInterpreterPass, OpPassWrapper> {
 public:
-  Operation * transformOp;
+  mlir::Operation * transformOp;
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(
       TransformDialectInterpreterPass)
 
@@ -46,7 +46,7 @@ public:
   }
   TransformDialectInterpreterPass(
       const TransformDialectInterpreterPass &pass)
-      : TransformInterpreterPassBase(pass) {}
+      : TransformInterpreterPassBaseModified(pass) {}
  
   StringRef getArgument() const override {
     return "test-transform-dialect-interpreter";
@@ -60,16 +60,16 @@ public:
     registry.insert<transform::TransformDialect>();
   }
 
-  void findOperationsByName(Operation *root, StringRef name,
-                            SmallVectorImpl<Operation *> &operations) {
-    root->walk([&](Operation *op) {
+  void findOperationsByName(mlir::Operation *root, llvm::StringRef name,
+                            llvm::SmallVectorImpl<mlir::Operation *> &operations) {
+    root->walk([&](mlir::Operation *op) {
       if (op->getName().getStringRef() == name) {
         operations.push_back(op);
       }
     });
   }
 
-  void createParameterMapping(MLIRContext &context, ArrayRef<int> values,
+  void createParameterMapping(mlir::MLIRContext &context, ArrayRef<int> values,
                               RaggedArray<transform::MappedValue> &result) {
     SmallVector<transform::MappedValue> storage =
         llvm::to_vector(llvm::map_range(values, [&](int v) {
@@ -80,12 +80,12 @@ public:
   }
 
   void
-  createOpResultMapping(Operation *root, StringRef name,
+  createOpResultMapping(mlir::Operation *root, StringRef name,
                         RaggedArray<transform::MappedValue> &extraMapping) {
-    SmallVector<Operation *> operations;
+    SmallVector<mlir::Operation *> operations;
     findOperationsByName(root, name, operations);
     SmallVector<Value> results;
-    for (Operation *op : operations)
+    for (mlir::Operation *op : operations)
       llvm::append_range(results, op->getResults());
     extraMapping.push_back(results);
   }
@@ -101,11 +101,11 @@ public:
   }
 
 
-  LogicalResult initialize(MLIRContext *context) override {
+  mlir::LogicalResult initialize(mlir::MLIRContext *context) override {
 
     StringRef transformFileName =this->transformName;
     StringRef transformLibraryFileName =this->transformLibraryFileName;
-    return transform::detail::interpreterBaseInitializeImplFromPass(
+    return interpreterBaseInitializeImplModified(
         context, transformFileName, transformLibraryFileName,
         sharedTransformModule, transformLibraryModule);
   }
@@ -134,7 +134,7 @@ public:
 
     RaggedArray<transform::MappedValue> extraMapping;
     if (!bindFirstExtraToOps.empty()) {
-      SmallVector<Operation *> operations;
+      SmallVector<mlir::Operation *> operations;
       findOperationsByName(getOperation(), bindFirstExtraToOps.getValue(),
                            operations);
       extraMapping.push_back(operations);
@@ -147,7 +147,7 @@ public:
     }
 
     if (!bindSecondExtraToOps.empty()) {
-      SmallVector<Operation *> operations;
+      SmallVector<mlir::Operation *> operations;
       findOperationsByName(getOperation(), bindSecondExtraToOps, operations);
       extraMapping.push_back(operations);
     } else if (!bindSecondExtraToParams.empty()) {
@@ -159,7 +159,7 @@ public:
     }
 
     options = options.enableExpensiveChecks(enableExpensiveChecks);
-    if (failed(transform::detail::interpreterBaseRunOnOperationImplFromPass(
+    if (failed(interpreterBaseRunOnOperationImplModified(
             getOperation(), getArgument(), getSharedTransformModule(),
             getTransformLibraryModule(), extraMapping, options,
             transformFileName, transformLibraryFileName, debugPayloadRootTag,
@@ -237,7 +237,7 @@ createTransformDialectInterpreterPass(llvm::StringRef transformOp) {
 
 struct TransformDialectEraseSchedulePass
     : public PassWrapper<TransformDialectEraseSchedulePass,
-                         OperationPass<ModuleOp>> {
+                         OperationPass<mlir::ModuleOp>> {
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(
       TransformDialectEraseSchedulePass)
 
@@ -250,7 +250,7 @@ struct TransformDialectEraseSchedulePass
   }
 
   void runOnOperation() override {
-    getOperation()->walk<WalkOrder::PreOrder>([&](Operation *nestedOp) {
+    getOperation()->walk<WalkOrder::PreOrder>([&](mlir::Operation *nestedOp) {
       if (isa<transform::TransformOpInterface>(nestedOp)) {
         nestedOp->erase();
         return WalkResult::skip();
@@ -259,11 +259,9 @@ struct TransformDialectEraseSchedulePass
     });
   }
 };
-auto
+/*auto
 createTransformDialectEraseSchedulePass() {
   return std::make_unique<TransformDialectEraseSchedulePass>();
-}
+}*/
  
-
-} // namespace
 

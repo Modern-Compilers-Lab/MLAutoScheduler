@@ -11,7 +11,7 @@
 
 #include "EvaluationByExecution.h"
 
-#include "/scratch/ia2280/mlir_autoScheduler/MLScheduler/src/TransformDialectInterpreter.cpp"
+//#include "/scratch/ia2280/mlir_autoScheduler/MLScheduler/src/Transform/TransformDialectInterpreter.cpp"
 #pragma once
 using namespace mlir;
 std::string getTransformedCode(std::string inputCode, std::string transfromDialectString);
@@ -110,14 +110,14 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     std::string cleanedString = removeExtraModuleTagCreated(transformedString);
     //std::cout<<cleanedString<<std::endl;
     // Continue the lowerings of the code to llvm runnable code*/
-    std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n %named_conv = transform.structured.match ops{[\"linalg.matmul\"]} in %variant_op : (!transform.any_op) -> !transform.any_op \n %forall_l1, %conv_l1 = transform.structured.tile_to_forall_op %named_conv tile_sizes [10, 10]: (!transform.any_op) -> (!transform.any_op, !transform.any_op) }";
+    //std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n %named_conv = transform.structured.match ops{[\"linalg.matmul\"]} in %variant_op : (!transform.any_op) -> !transform.any_op \n %forall_l1, %conv_l1 = transform.structured.tile_to_forall_op %named_conv tile_sizes [10, 10]: (!transform.any_op) -> (!transform.any_op, !transform.any_op) }";
 
   
     //mlir::OwningOpRef<Operation *> module = parseSourceString(transformDialectString, (op)->getContext());
     //(*module)->dump();
     std::string outString;
     llvm::raw_string_ostream output_run(outString);
-    auto start = std::chrono::high_resolution_clock::now();
+    //auto start = std::chrono::high_resolution_clock::now();
     mlir::PassManager pm((op)->getName());
     
     
@@ -129,7 +129,7 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     options.bufferizeFunctionBoundaries = true;
     options.createDeallocs = true;
     options.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
-     pm.addPass(createTransformDialectInterpreterPass(transformDialectString));
+    // pm.addPass(createTransformDialectInterpreterPass(transformDialectString));
     //pm.addPass(createTestTransformDialectEraseSchedulePass());
     pm.addPass(mlir::createLoopInvariantCodeMotionPass());
     pm.addPass(mlir::createCSEPass());
@@ -168,16 +168,16 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
 
     if (!mlir::failed(pm.run((op))))
         (op)->print(output_run);
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    /*auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);*/
     
 
 
     // Getting the evaluation uisng mlir-cpu-runner, the function uses a system call
-    auto start_eval = std::chrono::high_resolution_clock::now();
+    //auto start_eval = std::chrono::high_resolution_clock::now();
     std::string OutputData = getEvaluation(outString);
-    auto end_eval = std::chrono::high_resolution_clock::now();
-    auto duration_eval = std::chrono::duration_cast<std::chrono::microseconds>(end_eval - start_eval);
+    /*auto end_eval = std::chrono::high_resolution_clock::now();
+    auto duration_eval = std::chrono::duration_cast<std::chrono::microseconds>(end_eval - start_eval);*/
     
     // Printing the evaluation 
     if (std::getenv("AS_VERBOSE") != nullptr)
@@ -192,8 +192,8 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
                 if (node->getTransformation() != NULL)
                 {
                     debugFile << OutputData << std::endl;
-                    debugFile << "Time taken by Lowerings: " << duration.count() << " microseconds" << std::endl;
-                    debugFile << "Time taken by Evaluation: " << duration_eval.count() << " microseconds" << std::endl;
+                    /*debugFile << "Time taken by Lowerings: " << duration.count() << " microseconds" << std::endl;
+                    debugFile << "Time taken by Evaluation: " << duration_eval.count() << " microseconds" << std::endl;*/
                 }
                 debugFile.close();
             }

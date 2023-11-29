@@ -10,7 +10,7 @@ include_directories(include)
 include_directories(autoSchedulerInfrastructure/include)
 
 # # Add the source files
-# file(GLOB SOURCES "src/*.cpp")
+file(GLOB SOURCES "src/*.cpp")
 
 # # Add the executable
 # add_executable(AutoML ${SOURCES})
@@ -63,14 +63,8 @@ get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 
 add_llvm_executable(AutoSchedulerML 
 main.cpp
-src/TransformDialectInterpreter.cpp
-src/BeamSearch.cpp
-src/VectorizationTransformation.cpp
-src/ParallelizationTransformation.cpp
-src/TilingTransformation.cpp
-src/InterchangeTransformation.cpp
-src/EvaluationByExecution.cpp
-src/MLIRCodeIR.cpp
+
+${SOURCES}
 )
 
 llvm_update_compile_flags(AutoSchedulerML)

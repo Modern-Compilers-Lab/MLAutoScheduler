@@ -1,4 +1,4 @@
-//===- TestTransformDialectInterpreter.h --------------------------------===//
+//===- TransformDialectInterpreter.h --------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,11 +6,15 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file defines a test pass that interprets Transform dialect operations in
+// This file defines a pass that interprets Transform dialect operations in
 // the module.
 //
 //===----------------------------------------------------------------------===//
 
+using namespace mlir; 
+
+std::unique_ptr<mlir::Pass>
+createTransformDialectInterpreterPass(llvm::StringRef transformOp);
 
 /*auto
 createTransformDialectEraseSchedulePass();*/
