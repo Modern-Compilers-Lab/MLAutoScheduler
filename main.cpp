@@ -37,6 +37,7 @@
 #include "ParallelizationTransformation.h"
 #include "VectorizationTransformation.h"
 #include "MLIRCodeIR.h"
+#include "BeamSearch.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include <optional>
 #include "mlir/Dialect/Transform/IR/TransformInterfaces.h"
@@ -53,6 +54,7 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/ToolOutputFile.h"
+
 
 using namespace mlir;
 
@@ -112,47 +114,36 @@ int main(int argc, char **argv)
 
   // Create a root Node for transformations
   Node *root = new Node(&codeIr);
-  SmallVector<Operation *> tileOps;
-  SmallVector<Operation *> tiledOps;
+  EvaluationByExecution evaluator =  EvaluationByExecution(functionName+"_logs_best_exhustive.txt");
 
-  std::optional<ArrayAttr> mapping;
-  SmallVector<OpFoldResult> mixedTileSizes;
-  IRRewriter rewriter(&context);
-
-  mlir::PassManager pm((module1).get()->getName());
-
-  // Apply any generic pass manager command-line options and run the pipeline, only to apply Interchange
-  applyPassManagerCLOptions(pm);
-  mlir::OpPassManager &optPM = pm.nest<mlir::func::FuncOp>();
-
-  // Add a custom pass to the optimization pipeline
-  // optPM.addPass(mlir::createLinalgGeneralizationPass());
-
-  if (!mlir::failed(pm.run(*(module1))))
-    std::cout << "##################################################\n";
+  // Evaluate the root transformation
+  //std::string RootEvel = evaluator.evaluateTransformation(root);
+  //root->setEvaluation(RootEvel);
+  /*BeamSearch* searcher = new BeamSearch(3, &context, functionName);
+  Node * res = searcher->runSearchMethod(root);*/
 
   // Initialize an evaluator for transformation evaluations
-  EvaluationByExecution evaluator =  EvaluationByExecution(functionName+"_logs_best.txt");
+  // EvaluationByExecution evaluator =  EvaluationByExecution(functionName+"_logs_best.txt");
 
-  SmallVector<Node *, 2> ParaList = Parallelization::createParallelizationCandidates(root, &context);
+  //SmallVector<Node *, 2> ParaList = Parallelization::createParallelizationCandidates(root, &context);
   
   // Interlist.push_back(root);
-  std::cout << "size = " << ParaList.size() << std::endl;
+  //std::cout << "size = " << ParaList.size() << std::endl;
   // Set children nodes for the root Node
 
-  root->setChildrenNodes(ParaList);
+  //root->setChildrenNodes(ParaList);
 
   // Evaluate the root transformation
   std::string RootEvel = evaluator.evaluateTransformation(root);
   root->setEvaluation(RootEvel);
 
   // Loop through the children nodes of the root
-  for (auto ChildNode : ParaList)
+  /*for (auto ChildNode : ParaList)
   {
-  std::string evel = evaluator.evaluateTransformation(ChildNode);
-  ChildNode->setEvaluation(evel);
-    
-   SmallVector<Node *, 2> list1 = Tiling::createTilingCandidates(ChildNode, &context);
+    std::string evel = evaluator.evaluateTransformation(ChildNode);
+    ChildNode->setEvaluation(evel);*/
+      
+    SmallVector<Node *, 2> list1 = Tiling::createTilingCandidates(root, &context);
     
     /*MLIRCodeIR *ToCloneCodeIr = (MLIRCodeIR *)ChildNode->getTransformedCodeIr();
     MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)ToCloneCodeIr->cloneIr();
@@ -160,9 +151,10 @@ int main(int argc, char **argv)
 
     std::vector<Transformation*> TransList= ChildNode->getTransformationList();
     ClonedNode->setTransformationList(TransList);
+     list1.insert(list1.begin(), ClonedNode);*/
 
-    list1.push_back(ClonedNode)*/
-    ChildNode->setChildrenNodes(list1);
+    //list1.push_back(ClonedNode);
+    root->setChildrenNodes(list1);
 
     // Loop through the children nodes of the current child node
     for (auto node1 : list1)
@@ -177,31 +169,20 @@ int main(int argc, char **argv)
 
       std::vector<Transformation*> TransList= ChildNode->getTransformationList();
       ClonedNodeInter->setTransformationList(TransList);*/
-
-      /*mlir::OwningOpRef<Operation *> *op1 = ((mlir::OwningOpRef<Operation *> *)(*ChildNode->getTransformedCodeIr()).getIr());
-      mlir::PassManager pm((*op1).get()->getName());
-      // Apply any generic pass manager command-line options and run the pipeline, only to apply Interchange
-      applyPassManagerCLOptions(pm);
-      mlir::OpPassManager &optPM = pm.nest<mlir::func::FuncOp>();
-      // Add a custom pass to the optimization pipeline
-      optPM.addPass(mlir::createLinalgGeneralizationPass());
-      if (!mlir::failed(pm.run(*(*op1))))*/
-        std::cout << "##################################################\n";
     
       SmallVector<Node *, 2> list = Interchange::createInterchangeCandidates(node1, &context);
-
-      //list.push_back(ClonedNodeInter);
-   
-      // SmallVector<Node *, 2> list = Vectorization::createVectorizationCandidates(node1, &context);
+     
       node1->setChildrenNodes(list);
 
       // Loop through the children nodes of the current node1
       for (auto node2 : list)
       {
-        SmallVector<Node *, 2> list_vect = Vectorization::createVectorizationCandidates(node2, &context);
-        node2->setChildrenNodes(list_vect);
         std::string evel1 = evaluator.evaluateTransformation(node2);
         node2->setEvaluation(evel1);
+
+        SmallVector<Node *, 2> list_vect = Vectorization::createVectorizationCandidates(node2, &context);
+        node2->setChildrenNodes(list_vect);
+        
         for (auto node3 : list_vect)
         {
           std::string evel2 = evaluator.evaluateTransformation(node3);
@@ -209,7 +190,7 @@ int main(int argc, char **argv)
         }
       }
     }
-  }
+  //}
 
   // Prepare the output JSON string
   std::ostringstream outputStringStream;
