@@ -17,5 +17,5 @@ class SearchMethod {
     private:
         
     public:
-        virtual Node * runSearchMethod(Node * root);
+        virtual Node * runSearchMethod(Node * root) = 0;
 };
