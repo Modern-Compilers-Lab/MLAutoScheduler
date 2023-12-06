@@ -13,6 +13,7 @@
 #include "Node.h"
 
 #include "mlir/Dialect/SCF/Transforms/Passes.h"
+#include "CustomPasses/Passes.h"
 
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/OperationSupport.h"

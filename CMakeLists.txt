@@ -5,15 +5,7 @@ set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 
 set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ standard to conform to")
 
-# Add the include directories
-include_directories(include)
-include_directories(autoSchedulerInfrastructure/include)
 
-# # Add the source files
-file(GLOB SOURCES "src/*.cpp")
-
-# # Add the executable
-# add_executable(AutoML ${SOURCES})
 
 
 
@@ -41,6 +33,11 @@ else()
   set(MLIR_INCLUDE_DIR ${MLIR_MAIN_SRC_DIR}/include)
   set(MLIR_GENERATED_INCLUDE_DIR ${LLVM_BINARY_DIR}/tools/mlir/include)
   set(MLIR_INCLUDE_DIRS "${MLIR_INCLUDE_DIR};${MLIR_GENERATED_INCLUDE_DIR}")
+  set(MLIR_TABLEGEN_EXE $<TARGET_FILE:mlir-tblgen>)
+  set(MLIR_TABLEGEN_OUTPUT_DIR ${LLVM_BINARY_DIR}/tools/mlir/include)
+
+  include_directories(SYSTEM ${MLIR_INCLUDE_DIR})
+  include_directories(SYSTEM ${MLIR_TABLEGEN_OUTPUT_DIR})
 endif()
 
 if(MLIR_ENABLE_BINDINGS_PYTHON)
@@ -61,10 +58,26 @@ add_definitions(${LLVM_DEFINITIONS})
 get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
 get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 
+
+# Add the include directories
+include_directories(include)
+include_directories(include/CustomPasses)
+include_directories(autoSchedulerInfrastructure/include)
+
+add_subdirectory(include)
+# # Add the source files
+file(GLOB SOURCES "src/*.cpp")
+file(GLOB PASSES_SOURCES "src/CustomPasses/*.cpp")
+
+# # Add the executable
+# add_executable(AutoML ${SOURCES})
+
 add_llvm_executable(AutoSchedulerML 
 main.cpp
-
+${PASSES_SOURCES}
 ${SOURCES}
+DEPENDS
+CustomPassesIncGen
 )
 
 llvm_update_compile_flags(AutoSchedulerML)
@@ -106,4 +119,5 @@ PRIVATE
   MLIRSupport
 
   )
+  #add_subdirectory(src)
 mlir_check_all_link_libraries(AutoSchedulerML)
