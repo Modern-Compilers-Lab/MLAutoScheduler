@@ -8,7 +8,6 @@
 ///
 //===----------------------------------------------------------------------===//
 
-
 #include "mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.h"
 #include <stdio.h>
 #include <sys/wait.h>
@@ -166,7 +165,8 @@ std::string getVectorizedCode(std::string inputCode, std::string transfromDialec
   }
 }
 
-mlir::Operation * DecomposeConv2dOp(mlir::Operation * Target){
+mlir::Operation *DecomposeConv2dOp(mlir::Operation *Target)
+{
 
   std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n   %conv = transform.structured.match ops{[\"linalg.conv_2d_nhwc_hwcf\"]} in %variant_op : (!transform.any_op) -> !transform.any_op %decomposed = transform.structured.decompose %conv: (!transform.any_op) -> !transform.any_op }";
 
@@ -174,13 +174,13 @@ mlir::Operation * DecomposeConv2dOp(mlir::Operation * Target){
 
   // Apply any generic pass manager command line options and run the pipeline.
   applyPassManagerCLOptions(pm);
-  
-  pm.addPass(createTransformDialectInterpreterPass(transformDialectString));
-  if (!mlir::failed(pm.run((Target)))){
-    return Target;
-  } 
-}
 
+  pm.addPass(createTransformDialectInterpreterPass(transformDialectString));
+  if (!mlir::failed(pm.run((Target))))
+  {
+    return Target;
+  }
+}
 
 Vectorization::Vectorization(mlir::linalg::LinalgOp *op,
                              mlir::MLIRContext *context)
@@ -189,7 +189,8 @@ Vectorization::Vectorization(mlir::linalg::LinalgOp *op,
   this->context = context;
 }
 
-std::string Vectorization::getType() {
+std::string Vectorization::getType()
+{
   return "Vectorization";
 }
 
@@ -215,34 +216,43 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
   SmallVector<MLIRCodeIR *, 2> CodeIRs;
 
   MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
-  std::vector<Transformation*> transformations = node->getTransformationList();
-llvm::SmallVector<int64_t, 4> tilingSizes;
-  for (Transformation* transform : transformations) {
-        // Check if the dynamic cast to Tiling is successful
-        if (transform->getType() == "Tiling")  {
-            // Found a Tiling transformation
-            Tiling *tiling = (Tiling *)transform;
+  std::vector<Transformation *> transformations = node->getTransformationList();
 
-            tilingSizes = tiling->getTilingSizes();
+  llvm::SmallVector<int64_t, 4> tilingSizes;
+  for (Transformation *transform : transformations)
+  {
+    // Check if the dynamic cast to Tiling is successful
+    if (transform->getType() == "Tiling")
+    {
+      // Found a Tiling transformation
+      Tiling *tiling = (Tiling *)transform;
 
-            for (int i = 0; i < tilingSizes.size(); ++i) {
-                if (i == 1) {
-                    tilingSizes[i] = 1;
-                } else if (i == 4) {
-                    tilingSizes[i] = 1;
-                }
-            }
-            std::cout << "Modified tilingSizes: [";
-            for (int i = 0; i < tilingSizes.size(); ++i) {
-                std::cout << tilingSizes[i];
-                if (i < tilingSizes.size() - 1) {
-                    std::cout << ", ";
-                }
-            }
-            std::cout << "]\n";
+      tilingSizes = tiling->getTilingSizes();
 
-                }
+      for (size_t i = 0; i < tilingSizes.size(); ++i)
+      {
+        if (i == 1)
+        {
+          tilingSizes[i] = 1;
+        }
+        else if (i == 4)
+        {
+          tilingSizes[i] = 1;
+        }
+      }
     }
+  }
+
+  /*std::cout << "Modified tilingSizes: [";
+  for (size_t i = 0; i < tilingSizes.size(); ++i)
+  {
+    std::cout << tilingSizes[i];
+    if (i < tilingSizes.size() - 1)
+    {
+      std::cout << ", ";
+    }
+  }
+  std::cout << "]\n";*/
 
   /*Operation *target = ((mlir::OwningOpRef<Operation *> *)(*CodeIr)
                            .getIr())
@@ -281,7 +291,6 @@ llvm::SmallVector<int64_t, 4> tilingSizes;
   MLIRCodeIR *ClonedCode = (MLIRCodeIR *)CodeIr->cloneIr();
   Node *ChildNode = new Node(ClonedCode);
 
-  
   std::vector<Transformation *> TransList = node->getTransformationList();
   ChildNode->setTransformationList(TransList);
 
@@ -298,40 +307,46 @@ llvm::SmallVector<int64_t, 4> tilingSizes;
   ChildNodes.push_back(ChildNode);
 
   ChildNodesList.push_back(ChildNodes);
-  //int OpIndex = 0;
+  // int OpIndex = 0;
+
   for (auto ChildNodes : ChildNodesList)
   {
     for (auto node : ChildNodes)
     {
       mlir::Operation *ClonedTarget = ((mlir::Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
-                                     .getIr());
-      
+                                           .getIr());
+
       scf::SCFTilingOptions options;
-        //scf::SCFTilingOptions scfoptions;
-        //std::cout <<"SIZE ====" << loops.size();
+      // scf::SCFTilingOptions scfoptions;
+      // std::cout <<"SIZE ====" << loops.size();
+
       options.setTileSizes(tilingSizes);
       ClonedTarget->walk([&](mlir::Operation *op)
-                        {
+                         {
             if (mlir::TilingInterface ClonedTileableOp 
                               =dyn_cast<mlir::TilingInterface>(op)) {
                 if ((op->getName().getStringRef()).str() != "linalg.fill" ){
                     IRRewriter rewriter(context);
+                      std::cout << "HERE\n";
                     FailureOr<scf::SCFTilingResult> maybeTiled = 
                             scf::tileUsingSCFForOp(rewriter, ClonedTileableOp, options);
+                              std::cout << "HERE\n";
+                              ClonedTarget->dump();
                     //FailureOr<scf::SCFTileAndFuseResult> maybeTiled =
                         //mlir::scf::tileConsumerAndFuseProducerGreedilyUsingSCFForOp(rewriter,ClonedTileableOp,tiling->getOptions());
                     if (!failed(maybeTiled))
                             rewriter.replaceOp(ClonedTileableOp, maybeTiled->loops.front()->getResults()); 
+                              std::cout << "HERE\n";
                 }
  
               } });
-      
-      //int ClonedOpIndex = 0;
-      // Conv2d Decomposition 
+
+      // int ClonedOpIndex = 0;
+      //  Conv2d Decomposition
       mlir::Operation *DecomposedTarget = DecomposeConv2dOp(ClonedTarget);
       MLIRCodeIR *DecomposedCodeIr = (MLIRCodeIR *)CodeIr->setMLIRIR(DecomposedTarget);
       node->setTransformedCodeIr(DecomposedCodeIr);
-      // End Conv2d Decomposition 
+      // End Conv2d Decomposition
 
       mlir::Operation *Target = ((mlir::Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
                                      .getIr());
@@ -344,7 +359,7 @@ llvm::SmallVector<int64_t, 4> tilingSizes;
 
       // Apply any generic pass manager command line options and run the pipeline.
       applyPassManagerCLOptions(pm);
-      
+
       pm.addPass(createTransformDialectInterpreterPass(transformDialectString));
       if (!mlir::failed(pm.run((Target))))
       {
@@ -371,14 +386,10 @@ llvm::SmallVector<int64_t, 4> tilingSizes;
 
       // TEMP : The interpreter introduces an extra "module {}", removing it
       std::string cleanedString = removeVectExtraModuleTagCreated(transformedString);
- 
+
       MLIRCodeIR *ClonedCodeIr = (MLIRCodeIR *)CodeIr->setMLIRIR(cleanedString, *((ClonedTarget)->getContext()));
 
       node->setTransformedCodeIr(ClonedCodeIr);*/
-
-
-
-
 
       /*llvm::SmallVector<Operation*, 2> linalgOps;
       ClonedTarget->walk<WalkOrder::PreOrder>([&](Operation *op) {
@@ -423,7 +434,7 @@ llvm::SmallVector<int64_t, 4> tilingSizes;
              //  }
                 ClonedOpIndex++;} });*/
     }
-    //OpIndex++;
+    // OpIndex++;
   }
   SmallVector<Node *, 2> ResChildNodes;
   for (const auto &innerVector : ChildNodesList)

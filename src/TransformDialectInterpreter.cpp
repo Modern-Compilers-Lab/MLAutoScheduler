@@ -11,7 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-//#include "TestTransformDialectExtension.h"
+// #include "TestTransformDialectExtension.h"
 #include "mlir/Dialect/Transform/IR/TransformInterfaces.h"
 #include "mlir/Dialect/Transform/IR/TransformOps.h"
 #include "TransformInterpreterPassBase.h"
@@ -20,68 +20,74 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 
-
 using namespace mlir;
-
 
 /// Simple pass that applies transform dialect ops directly contained in a
 /// module.
 
 template <typename Derived>
-class OpPassWrapper : public PassWrapper<Derived, OperationPass<>> {};
-
+class OpPassWrapper : public PassWrapper<Derived, OperationPass<>>
+{
+};
 
 class TransformDialectInterpreterPass
     : public TransformInterpreterPassBaseModified<
-          TransformDialectInterpreterPass, OpPassWrapper> {
+          TransformDialectInterpreterPass, OpPassWrapper>
+{
 public:
-  mlir::Operation * transformOp;
+  mlir::Operation *transformOp;
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(
       TransformDialectInterpreterPass)
 
   TransformDialectInterpreterPass() = default;
-  TransformDialectInterpreterPass(StringRef transformFileName){
+  TransformDialectInterpreterPass(StringRef transformFileName)
+  {
     this->transformName = transformFileName;
-
   }
   TransformDialectInterpreterPass(
       const TransformDialectInterpreterPass &pass)
       : TransformInterpreterPassBaseModified(pass) {}
- 
-  StringRef getArgument() const override {
+
+  StringRef getArgument() const override
+  {
     return "test-transform-dialect-interpreter";
   }
 
-  StringRef getDescription() const override {
+  StringRef getDescription() const override
+  {
     return "apply transform dialect operations one by one";
   }
 
-  void getDependentDialects(DialectRegistry &registry) const override {
+  void getDependentDialects(DialectRegistry &registry) const override
+  {
     registry.insert<transform::TransformDialect>();
   }
 
   void findOperationsByName(mlir::Operation *root, llvm::StringRef name,
-                            llvm::SmallVectorImpl<mlir::Operation *> &operations) {
-    root->walk([&](mlir::Operation *op) {
+                            llvm::SmallVectorImpl<mlir::Operation *> &operations)
+  {
+    root->walk([&](mlir::Operation *op)
+               {
       if (op->getName().getStringRef() == name) {
         operations.push_back(op);
-      }
-    });
+      } });
   }
 
   void createParameterMapping(mlir::MLIRContext &context, ArrayRef<int> values,
-                              RaggedArray<transform::MappedValue> &result) {
+                              RaggedArray<transform::MappedValue> &result)
+  {
     SmallVector<transform::MappedValue> storage =
-        llvm::to_vector(llvm::map_range(values, [&](int v) {
+        llvm::to_vector(llvm::map_range(values, [&](int v)
+                                        {
           Builder b(&context);
-          return transform::MappedValue(b.getI64IntegerAttr(v));
-        }));
+          return transform::MappedValue(b.getI64IntegerAttr(v)); }));
     result.push_back(std::move(storage));
   }
 
   void
   createOpResultMapping(mlir::Operation *root, StringRef name,
-                        RaggedArray<transform::MappedValue> &extraMapping) {
+                        RaggedArray<transform::MappedValue> &extraMapping)
+  {
     SmallVector<mlir::Operation *> operations;
     findOperationsByName(root, name, operations);
     SmallVector<Value> results;
@@ -92,7 +98,8 @@ public:
 
   unsigned numberOfSetOptions(const Option<std::string> &ops,
                               const ListOption<int> &params,
-                              const Option<std::string> &values) {
+                              const Option<std::string> &values)
+  {
     unsigned numSetValues = 0;
     numSetValues += !ops.empty();
     numSetValues += !params.empty();
@@ -100,16 +107,17 @@ public:
     return numSetValues;
   }
 
+  mlir::LogicalResult initialize(mlir::MLIRContext *context) override
+  {
 
-  mlir::LogicalResult initialize(mlir::MLIRContext *context) override {
-
-    StringRef transformFileName =this->transformName;
-    StringRef transformLibraryFileName =this->transformLibraryFileName;
+    StringRef transformFileName = this->transformName;
+    StringRef transformLibraryFileName = this->transformLibraryFileName;
     return interpreterBaseInitializeImplModified(
         context, transformFileName, transformLibraryFileName,
         sharedTransformModule, transformLibraryModule);
   }
-  void runOnOperation() override {
+  void runOnOperation() override
+  {
     unsigned firstSetOptions =
         numberOfSetOptions(bindFirstExtraToOps, bindFirstExtraToParams,
                            bindFirstExtraToResultsOfOps);
@@ -117,43 +125,56 @@ public:
         numberOfSetOptions(bindSecondExtraToOps, bindSecondExtraToParams,
                            bindSecondExtraToResultsOfOps);
     auto loc = UnknownLoc::get(&getContext());
-    if (firstSetOptions > 1) {
+    if (firstSetOptions > 1)
+    {
       emitError(loc) << "cannot bind the first extra top-level argument to "
                         "multiple entities";
       return signalPassFailure();
     }
-    if (secondSetOptions > 1) {
+    if (secondSetOptions > 1)
+    {
       emitError(loc) << "cannot bind the second extra top-level argument to "
                         "multiple entities";
       return signalPassFailure();
     }
-    if (firstSetOptions == 0 && secondSetOptions != 0) {
+    if (firstSetOptions == 0 && secondSetOptions != 0)
+    {
       emitError(loc) << "cannot bind the second extra top-level argument "
                         "without bindings the first";
     }
 
     RaggedArray<transform::MappedValue> extraMapping;
-    if (!bindFirstExtraToOps.empty()) {
+    if (!bindFirstExtraToOps.empty())
+    {
       SmallVector<mlir::Operation *> operations;
       findOperationsByName(getOperation(), bindFirstExtraToOps.getValue(),
                            operations);
       extraMapping.push_back(operations);
-    } else if (!bindFirstExtraToParams.empty()) {
+    }
+    else if (!bindFirstExtraToParams.empty())
+    {
       createParameterMapping(getContext(), bindFirstExtraToParams,
                              extraMapping);
-    } else if (!bindFirstExtraToResultsOfOps.empty()) {
+    }
+    else if (!bindFirstExtraToResultsOfOps.empty())
+    {
       createOpResultMapping(getOperation(), bindFirstExtraToResultsOfOps,
                             extraMapping);
     }
 
-    if (!bindSecondExtraToOps.empty()) {
+    if (!bindSecondExtraToOps.empty())
+    {
       SmallVector<mlir::Operation *> operations;
       findOperationsByName(getOperation(), bindSecondExtraToOps, operations);
       extraMapping.push_back(operations);
-    } else if (!bindSecondExtraToParams.empty()) {
+    }
+    else if (!bindSecondExtraToParams.empty())
+    {
       createParameterMapping(getContext(), bindSecondExtraToParams,
                              extraMapping);
-    } else if (!bindSecondExtraToResultsOfOps.empty()) {
+    }
+    else if (!bindSecondExtraToResultsOfOps.empty())
+    {
       createOpResultMapping(getOperation(), bindSecondExtraToResultsOfOps,
                             extraMapping);
     }
@@ -230,38 +251,40 @@ public:
 };
 
 std::unique_ptr<mlir::Pass>
-createTransformDialectInterpreterPass(llvm::StringRef transformOp) {
+createTransformDialectInterpreterPass(llvm::StringRef transformOp)
+{
   return std::make_unique<TransformDialectInterpreterPass>(transformOp);
 }
 
-
 struct TransformDialectEraseSchedulePass
     : public PassWrapper<TransformDialectEraseSchedulePass,
-                         OperationPass<mlir::ModuleOp>> {
+                         OperationPass<mlir::ModuleOp>>
+{
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(
       TransformDialectEraseSchedulePass)
 
-  StringRef getArgument() const final {
+  StringRef getArgument() const final
+  {
     return "test-transform-dialect-erase-schedule";
   }
 
-  StringRef getDescription() const final {
+  StringRef getDescription() const final
+  {
     return "erase transform dialect schedule from the IR";
   }
 
-  void runOnOperation() override {
-    getOperation()->walk<WalkOrder::PreOrder>([&](mlir::Operation *nestedOp) {
+  void runOnOperation() override
+  {
+    getOperation()->walk<WalkOrder::PreOrder>([&](mlir::Operation *nestedOp)
+                                              {
       if (isa<transform::TransformOpInterface>(nestedOp)) {
         nestedOp->erase();
         return WalkResult::skip();
       }
-      return WalkResult::advance();
-    });
+      return WalkResult::advance(); });
   }
 };
 /*auto
 createTransformDialectEraseSchedulePass() {
   return std::make_unique<TransformDialectEraseSchedulePass>();
 }*/
- 
-

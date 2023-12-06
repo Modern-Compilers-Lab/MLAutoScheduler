@@ -12,6 +12,7 @@
 #include "Transformation.h"
 #include "MLIRCodeIR.h"
 #include "Node.h"
+#include "Utils.h"
 
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"

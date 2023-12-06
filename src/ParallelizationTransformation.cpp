@@ -13,16 +13,7 @@
 #pragma once
 
 using namespace mlir;
-void generateCombinations(const llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4> &tileSizes,
-                          int64_t maxNumberLoops,
-                          int64_t currentLoop,
-                          SmallVector<int64_t, 4> &currentCombination,
-                          std::vector<SmallVector<int64_t, 4>> &combinations);
 
-llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4>
-generateTileForAllOpCombinations(int64_t maxNumberLoops,
-                              const llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4> &possibleTileSizes,
-                              const llvm::SmallVector<int64_t> &upperBounds);
 /*void generateForAllOpCombinations(const SmallVector<int64_t, 4> &tileSizes,
                                   int64_t maxNumberLoops,
                                   int64_t currentLoop,
@@ -31,18 +22,18 @@ generateTileForAllOpCombinations(int64_t maxNumberLoops,
 SmallVector<SmallVector<int64_t, 4>, 4>
 generateTileForAllOpCombinations(int64_t maxNumberLoops,
                                  const std::vector<int64_t> &possibleTileSizes);*/
-DiagnosedSilenceableFailure FuseIntoContainingOperation(Operation *containingOp, Operation* target,  IRRewriter &rewriter) {
+DiagnosedSilenceableFailure FuseIntoContainingOperation(Operation *containingOp, Operation *target, IRRewriter &rewriter)
+{
 
   SmallVector<Operation *> fusedOps;
-  //auto producerOps = state.getPayloadOps(getProducerOp());
-  //auto containingOps = state.getPayloadOps(getContainingOp());
+  // auto producerOps = state.getPayloadOps(getProducerOp());
+  // auto containingOps = state.getPayloadOps(getContainingOp());
 
   /*if (!llvm::hasSingleElement(containingOps)) {
     return emitDefiniteFailure()
            << "requires exactly one containing_op handle (got "
            << llvm::range_size(containingOps) << ")";
   }*/
-
 
   /*// If nothing to fuse, propagate success.
   if (std::empty(producerOps)) {
@@ -74,9 +65,9 @@ DiagnosedSilenceableFailure FuseIntoContainingOperation(Operation *containingOp,
     }
     return failure();
   };*/
-  
-target->walk([&](Operation *producerOp)
-  {
+
+  target->walk([&](Operation *producerOp)
+               {
     // TEMP: Check if the operation is a "linalg.fill" operation
     if ((producerOp->getName().getStringRef()).str() == "linalg.fill")
     {
@@ -109,8 +100,7 @@ target->walk([&](Operation *producerOp)
             }
         }
  
-    } 
-  });
+    } });
   return DiagnosedSilenceableFailure::success();
 }
 
@@ -128,7 +118,8 @@ llvm::SmallVector<int64_t, 4> Parallelization::getTileSizes()
   return this->tileSizes;
 }
 
-std::string Parallelization::getType() {
+std::string Parallelization::getType()
+{
   return "Parallelization";
 }
 std::string Parallelization::printTransformation()
@@ -161,12 +152,11 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
   // Define a vector of possible tile sizes (commented out)
   // std::vector<int64_t> possibleTileSizes = {32, 64, 128};
 
-  // Initialize vectors to store tile combinations 
+  // Initialize vectors to store tile combinations
   SmallVector<SmallVector<int64_t, 4>, 4> tileCombinations;
 
   // Initialize a list to store child nodes
   SmallVector<SmallVector<Node *, 2>> ChildNodesList;
-
 
   // Extract the transformed code IR from the input node
   MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
@@ -177,7 +167,7 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
 
   // Walk through operations in the target
   target->walk([&](Operation *op)
-  {
+               {
     // TEMP: Check if the operation is not a "linalg.fill" operation
     if ((op->getName().getStringRef()).str() != "linalg.fill")
     {
@@ -211,7 +201,7 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
             }
             possibleTileSizes.push_back(dividers);
         }
-        for (int NumberLoops = 2; NumberLoops <= upperBounds.size(); ++NumberLoops)
+        for (size_t NumberLoops = 2; NumberLoops <= upperBounds.size(); ++NumberLoops)
         {
           SmallVector<SmallVector<int64_t, 4>, 4> newCombinations =
               generateTileForAllOpCombinations(NumberLoops, possibleTileSizes, upperBounds);
@@ -270,14 +260,13 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
         ChildNodes.push_back(ChildNode);
       }
       ChildNodesList.push_back(ChildNodes);
-    } }
-  });
+    } } });
   int OpIndex = 0;
   for (auto ChildNodes : ChildNodesList)
   {
     for (auto node : ChildNodes)
     {
-      Operation *ClonedTarget = ((Operation  *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
+      Operation *ClonedTarget = ((Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
                                      .getIr());
       Parallelization *parallelization = (Parallelization *)node->getTransformation();
 
@@ -309,7 +298,6 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
             }
           ClonedOpIndex++;
           } });
-          
     }
     OpIndex++;
   }
@@ -321,59 +309,6 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
   }
 
   return ResChildNodes;
-}
-
-
-// Function to generate tiling sizes that are multiples of the upperBounds.
-void generateForAllOpCombinations(const llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4> &tileSizes,
-                               int64_t maxNumberLoops,
-                               int64_t currentLoop,
-                               llvm::SmallVector<int64_t, 4> &currentCombination,
-                               std::vector<llvm::SmallVector<int64_t, 4>> &combinations,
-                               const llvm::SmallVector<int64_t> &upperBounds)
-{
-  if (currentLoop >= maxNumberLoops)
-  {
-    combinations.push_back(currentCombination);
-    return;
-  }
-  llvm::SmallVector<int64_t, 4> currentTileSizes = tileSizes[currentLoop];
-
-  for (int64_t tileSize : currentTileSizes)
-  {
-    // Check if the current tileSize is a multiple of the corresponding upperBound.
-    if (upperBounds[currentLoop] % tileSize == 0)
-    {
-
-      currentCombination[currentLoop] = tileSize;
-      generateForAllOpCombinations(tileSizes,
-                                maxNumberLoops,
-                                currentLoop + 1,
-                                currentCombination,
-                                combinations,
-                                upperBounds);
-    }
-  }
-}
-
-llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4>
-generateTileForAllOpCombinations(int64_t maxNumberLoops,
-                              const llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4> &possibleTileSizes,
-                              const llvm::SmallVector<int64_t> &upperBounds)
-{
-
-  llvm::SmallVector<int64_t, 4> currentCombination(maxNumberLoops);
-  std::vector<llvm::SmallVector<int64_t, 4>> combinations;
-
-  generateForAllOpCombinations(possibleTileSizes,
-                            maxNumberLoops,
-                            0,
-                            currentCombination,
-                            combinations,
-                            upperBounds);
-
-  return llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4>(combinations.begin(),
-                                                             combinations.end());
 }
 
 /*void generateForAllOpCombinations(const SmallVector<int64_t, 4> &tileSizes,

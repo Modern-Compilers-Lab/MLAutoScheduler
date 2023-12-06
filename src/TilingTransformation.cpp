@@ -31,10 +31,12 @@ scf::SCFTilingOptions Tiling::getOptions()
 {
   return this->options;
 }
-llvm::SmallVector<int64_t, 4> Tiling::getTilingSizes(){
+llvm::SmallVector<int64_t, 4> Tiling::getTilingSizes()
+{
   return tileSizes;
 }
-std::string Tiling::getType() {
+std::string Tiling::getType()
+{
   return "Tiling";
 }
 std::string Tiling::printTransformation()
@@ -123,7 +125,7 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
                                                       mlir::MLIRContext *context)
 {
 
-  int64_t maxNumberLoops = 3;
+  // int64_t maxNumberLoops = 3;
 
   // std::vector<int64_t> possibleTileSizes = {128, 32, 64};
 
@@ -138,7 +140,7 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
 
   MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
 
-  Operation *target = ((Operation  *)(*CodeIr)
+  Operation *target = ((Operation *)(*CodeIr)
                            .getIr());
   SmallVector<Node *, 2> ChildNodes;
 
@@ -277,7 +279,7 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
   {
     for (auto node : ChildNodes)
     {
-      Operation *ClonedTarget = ((Operation*)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
+      Operation *ClonedTarget = ((Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
                                      .getIr());
       Tiling *tiling = (Tiling *)node->getTransformation();
 

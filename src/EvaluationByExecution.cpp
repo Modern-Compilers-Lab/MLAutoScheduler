@@ -35,7 +35,7 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
     MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)CodeIr->cloneIr();
     
-    Operation *ClonedTarget = ((Operation *)(*node->getTransformedCodeIr()).getIr());
+    //Operation *ClonedTarget = ((Operation *)(*node->getTransformedCodeIr()).getIr());
     Operation *op = ((Operation *)(*(ClonedCode))
                                      .getIr());
     // Printing the transformed code

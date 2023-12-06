@@ -18,7 +18,6 @@ void generateCandidateHelper(std::vector<unsigned> &values,
                              std::vector<std::vector<unsigned>> &candidates,
                              unsigned index);
 
-                             
 Interchange::Interchange(linalg::LinalgOp *op,
                          std::vector<unsigned> InterchangeVector,
                          mlir::MLIRContext *context)
@@ -29,7 +28,8 @@ Interchange::Interchange(linalg::LinalgOp *op,
   this->context = context;
 }
 
-std::string Interchange::getType() {
+std::string Interchange::getType()
+{
   return "Interchange";
 }
 
@@ -69,7 +69,6 @@ SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
   // Initialize a list to store ChildNodes
   SmallVector<SmallVector<Node *, 2>> ChildNodesList;
 
-  
   // Get the target operation from the provided node's transformed code
   MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
   Operation *target = ((Operation *)(*CodeIr)
@@ -78,7 +77,7 @@ SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
 
   // Traverse the operations in the target operation's hierarchy
   target->walk([&](Operation *op)
-  {
+               {
     // Check if the operation is "linalg.generic"
     if (auto InterchangeableOp = dyn_cast<linalg::LinalgOp>(op)) {
 
@@ -117,8 +116,7 @@ SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
         ChildNodesList.push_back(ChildNodes);
       } 
       counter++; 
-    } 
-  });
+    } });
   int OpIndex = 0;
   for (auto ChildNodes : ChildNodesList)
   {
@@ -135,7 +133,7 @@ SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
 
       // Walk through operations in the cloned target operation
       ClonedTarget->walk([&](Operation *op)
-      {
+                         {
         if (linalg::LinalgOp ClonedInterchangeableOp = 
                   dyn_cast<linalg::LinalgOp>(op)) {
              // TEMP: Check if the operation is not 'linalg.fill' and ClonedOpIndex is 3 
@@ -159,9 +157,7 @@ SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
                
             }
           ClonedOpIndex++;
-          } 
-      });
-      
+          } });
     }
     OpIndex++;
   }
