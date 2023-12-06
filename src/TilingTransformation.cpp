@@ -14,16 +14,7 @@
 
 #pragma once
 using namespace mlir;
-void generateCombinations(const llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4> &tileSizes,
-                          int64_t maxNumberLoops,
-                          int64_t currentLoop,
-                          SmallVector<int64_t, 4> &currentCombination,
-                          std::vector<SmallVector<int64_t, 4>> &combinations);
 
-llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4>
-generateTileForOpCombinations(int64_t maxNumberLoops,
-                              const llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4> &possibleTileSizes,
-                              const llvm::SmallVector<int64_t> &upperBounds);
 Tiling::Tiling(mlir::TilingInterface *op,
                scf::SCFTilingOptions &options,
                llvm::SmallVector<int64_t, 4> tileSizes,
@@ -39,6 +30,12 @@ Tiling::Tiling(mlir::TilingInterface *op,
 scf::SCFTilingOptions Tiling::getOptions()
 {
   return this->options;
+}
+llvm::SmallVector<int64_t, 4> Tiling::getTilingSizes(){
+  return tileSizes;
+}
+std::string Tiling::getType() {
+  return "Tiling";
 }
 std::string Tiling::printTransformation()
 {
@@ -165,41 +162,13 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
 
           OpBuilder builder(context);
           SmallVector<Range> iterationDomain = tileableOp.getIterationDomain(builder);
-
-          llvm::SmallVector<int64_t> upperBounds;
-          for (const auto &range : llvm::enumerate(iterationDomain))
-          {
-            llvm::SmallVector<Value> dynamicVec;
-            llvm::SmallVector<int64_t> staticVec;
-            if (auto val = getConstantIntValue(range.value().size)){
-              dispatchIndexOpFoldResult(range.value().size,
-                                      dynamicVec,
-                                      staticVec);
-              upperBounds.append(staticVec.begin(), staticVec.end());
-            }else{
-              upperBounds.push_back(-1);
-            }
-           
-          }
-          SmallVector<SmallVector<int64_t, 4>, 4> possibleTileSizes;
-          for (int64_t value : upperBounds) {
-            llvm::SmallVector<int64_t, 4> dividers;
-            if (value == -1){
-               dividers.push_back(1);
-            }
-            for (int64_t i = 2; i <= value; ++i) {
-                if (i < 50 && value % i == 0) {
-                    dividers.push_back(i);
-                }
-            }
-            possibleTileSizes.push_back(dividers);
-          }
-          for (int NumberLoops = 2; NumberLoops <= upperBounds.size(); ++NumberLoops)
-          {
+ 
+          /*for (int NumberLoops = 2; NumberLoops <= iterationDomain.size(); ++NumberLoops)
+          {*/
             SmallVector<SmallVector<int64_t, 4>, 4> newCombinations =
-                generateTileForOpCombinations(NumberLoops, possibleTileSizes, upperBounds);
+                generateTileForOpCombinations(/*NumberLoops*/iterationDomain.size(), iterationDomain);
             tileCombinations.insert(tileCombinations.end(), newCombinations.begin(), newCombinations.end());
-          }
+          //}
           /*tileCombinations.erase(
               std::remove_if(
                   tileCombinations.begin(),
@@ -235,13 +204,13 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
          
           /*tileCombinations = generateTileCombinations(loops.size(),
                                       possibleTileSizes);*/
-          std::sample(
+          /*std::sample(
             tileCombinations.begin(),
             tileCombinations.end(),
             std::back_inserter(SelectedTileCombinations),
             1,
-            std::mt19937{std::random_device{}()});
-          for (const auto& candidate : SelectedTileCombinations){
+            std::mt19937{std::random_device{}()});*/
+          for (const auto& candidate : tileCombinations){
 
  
             MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)CodeIr->cloneIr();
@@ -428,57 +397,7 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
   // });
   // return ChildNodes;
 }
-// Function to generate tiling sizes that are multiples of the upperBounds.
-void generateForOpCombinations(const llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4> &tileSizes,
-                               int64_t maxNumberLoops,
-                               int64_t currentLoop,
-                               llvm::SmallVector<int64_t, 4> &currentCombination,
-                               std::vector<llvm::SmallVector<int64_t, 4>> &combinations,
-                               const llvm::SmallVector<int64_t> &upperBounds)
-{
-  if (currentLoop >= maxNumberLoops)
-  {
-    combinations.push_back(currentCombination);
-    return;
-  }
-  llvm::SmallVector<int64_t, 4> currentTileSizes = tileSizes[currentLoop];
 
-  for (int64_t tileSize : currentTileSizes)
-  {
-    // Check if the current tileSize is a multiple of the corresponding upperBound.
-    if (upperBounds[currentLoop] % tileSize == 0)
-    {
-
-      currentCombination[currentLoop] = tileSize;
-      generateForOpCombinations(tileSizes,
-                                maxNumberLoops,
-                                currentLoop + 1,
-                                currentCombination,
-                                combinations,
-                                upperBounds);
-    }
-  }
-}
-
-llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4>
-generateTileForOpCombinations(int64_t maxNumberLoops,
-                              const llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4> &possibleTileSizes,
-                              const llvm::SmallVector<int64_t> &upperBounds)
-{
-
-  llvm::SmallVector<int64_t, 4> currentCombination(maxNumberLoops);
-  std::vector<llvm::SmallVector<int64_t, 4>> combinations;
-
-  generateForOpCombinations(possibleTileSizes,
-                            maxNumberLoops,
-                            0,
-                            currentCombination,
-                            combinations,
-                            upperBounds);
-
-  return llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4>(combinations.begin(),
-                                                             combinations.end());
-}
 /*void generateCombinations(const SmallVector<int64_t, 4> &tileSizes,
                           int64_t maxNumberLoops,
                           int64_t currentLoop,

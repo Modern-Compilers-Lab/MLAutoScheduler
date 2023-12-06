@@ -127,6 +127,10 @@ llvm::SmallVector<int64_t, 4> Parallelization::getTileSizes()
 {
   return this->tileSizes;
 }
+
+std::string Parallelization::getType() {
+  return "Parallelization";
+}
 std::string Parallelization::printTransformation()
 {
   std::string result = "TP( ";
@@ -237,15 +241,15 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
 
         // Insert the elements into tileCombinations
         //tileCombinations.push_back(elementsToInsert);
-        SmallVector<SmallVector<int64_t, 4>, 4> SelectedTileCombinations;
+        /*SmallVector<SmallVector<int64_t, 4>, 4> SelectedTileCombinations;
           std::sample(
               tileCombinations.begin(),
               tileCombinations.end(),
               std::back_inserter(SelectedTileCombinations),
               1,
               std::mt19937{std::random_device{}()}
-          );
-      for (const auto &candidate : SelectedTileCombinations)
+          );*/
+      for (const auto &candidate : tileCombinations)
       {
 
         MLIRCodeIR *ClonedCode = (MLIRCodeIR *)CodeIr->cloneIr();

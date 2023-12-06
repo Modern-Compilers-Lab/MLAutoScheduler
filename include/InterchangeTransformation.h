@@ -69,6 +69,7 @@ class Interchange: public Transformation{
         /// Overrides the applyTransformation() method from the base class Transformation.
         void applyTransformation(CodeIR CodeIr) override;
         std::string printTransformation() override;
+        std::string getType() override;
 
         std::vector<unsigned> getInterchangeVector();
 

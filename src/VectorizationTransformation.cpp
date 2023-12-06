@@ -17,6 +17,7 @@
 #include "mlir/InitAllDialects.h"
 
 #include "VectorizationTransformation.h"
+#include "TilingTransformation.h"
 #include "TransformDialectInterpreter.h"
 #include "TransformInterpreterPassBase.h"
 
@@ -188,6 +189,10 @@ Vectorization::Vectorization(mlir::linalg::LinalgOp *op,
   this->context = context;
 }
 
+std::string Vectorization::getType() {
+  return "Vectorization";
+}
+
 std::string Vectorization::printTransformation()
 {
 
@@ -210,6 +215,34 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
   SmallVector<MLIRCodeIR *, 2> CodeIRs;
 
   MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
+  std::vector<Transformation*> transformations = node->getTransformationList();
+llvm::SmallVector<int64_t, 4> tilingSizes;
+  for (Transformation* transform : transformations) {
+        // Check if the dynamic cast to Tiling is successful
+        if (transform->getType() == "Tiling")  {
+            // Found a Tiling transformation
+            Tiling *tiling = (Tiling *)transform;
+
+            tilingSizes = tiling->getTilingSizes();
+
+            for (int i = 0; i < tilingSizes.size(); ++i) {
+                if (i == 1) {
+                    tilingSizes[i] = 1;
+                } else if (i == 4) {
+                    tilingSizes[i] = 1;
+                }
+            }
+            std::cout << "Modified tilingSizes: [";
+            for (int i = 0; i < tilingSizes.size(); ++i) {
+                std::cout << tilingSizes[i];
+                if (i < tilingSizes.size() - 1) {
+                    std::cout << ", ";
+                }
+            }
+            std::cout << "]\n";
+
+                }
+    }
 
   /*Operation *target = ((mlir::OwningOpRef<Operation *> *)(*CodeIr)
                            .getIr())
@@ -248,6 +281,7 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
   MLIRCodeIR *ClonedCode = (MLIRCodeIR *)CodeIr->cloneIr();
   Node *ChildNode = new Node(ClonedCode);
 
+  
   std::vector<Transformation *> TransList = node->getTransformationList();
   ChildNode->setTransformationList(TransList);
 
@@ -271,6 +305,26 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
     {
       mlir::Operation *ClonedTarget = ((mlir::Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
                                      .getIr());
+      
+      scf::SCFTilingOptions options;
+        //scf::SCFTilingOptions scfoptions;
+        //std::cout <<"SIZE ====" << loops.size();
+      options.setTileSizes(tilingSizes);
+      ClonedTarget->walk([&](mlir::Operation *op)
+                        {
+            if (mlir::TilingInterface ClonedTileableOp 
+                              =dyn_cast<mlir::TilingInterface>(op)) {
+                if ((op->getName().getStringRef()).str() != "linalg.fill" ){
+                    IRRewriter rewriter(context);
+                    FailureOr<scf::SCFTilingResult> maybeTiled = 
+                            scf::tileUsingSCFForOp(rewriter, ClonedTileableOp, options);
+                    //FailureOr<scf::SCFTileAndFuseResult> maybeTiled =
+                        //mlir::scf::tileConsumerAndFuseProducerGreedilyUsingSCFForOp(rewriter,ClonedTileableOp,tiling->getOptions());
+                    if (!failed(maybeTiled))
+                            rewriter.replaceOp(ClonedTileableOp, maybeTiled->loops.front()->getResults()); 
+                }
+ 
+              } });
       
       //int ClonedOpIndex = 0;
       // Conv2d Decomposition 

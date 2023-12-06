@@ -67,6 +67,7 @@ class Parallelization: public Transformation{
         /// Overrides the applyTransformation() method from the base class Transformation.
         void applyTransformation(CodeIR CodeIr) override;
         std::string printTransformation() override;
+        std::string getType() override;
         /// Creates a list of tiling transformation candidates for the given CodeIR object.
         /// Overrides the createCandidates() method from the base class Transformation.
         static SmallVector<Node* , 2>  createParallelizationCandidates(Node *node, mlir::MLIRContext *context);

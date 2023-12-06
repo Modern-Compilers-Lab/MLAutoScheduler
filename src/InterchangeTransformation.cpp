@@ -29,6 +29,10 @@ Interchange::Interchange(linalg::LinalgOp *op,
   this->context = context;
 }
 
+std::string Interchange::getType() {
+  return "Interchange";
+}
+
 std::string Interchange::printTransformation()
 {
 

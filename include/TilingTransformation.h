@@ -12,6 +12,7 @@
 #include "Transformation.h"
 #include "MLIRCodeIR.h"
 #include "Node.h"
+#include "Utils.h"
 
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
@@ -56,7 +57,7 @@ class Tiling: public Transformation{
         mlir::TilingInterface* op;
         mlir::scf::SCFTilingOptions options;
         mlir::MLIRContext *context;
-        llvm::SmallVector<int64_t, 4>tileSizes;
+        llvm::SmallVector<int64_t, 4> tileSizes;
     public:
         Tiling();
 
@@ -67,6 +68,9 @@ class Tiling: public Transformation{
         /// Overrides the applyTransformation() method from the base class Transformation.
         void applyTransformation(CodeIR CodeIr) override;
         std::string printTransformation() override;
+
+        std::string getType() override;
+        llvm::SmallVector<int64_t, 4> getTilingSizes();
         /// Creates a list of tiling transformation candidates for the given CodeIR object.
         /// Overrides the createCandidates() method from the base class Transformation.
         static SmallVector<Node* , 2>  createTilingCandidates(Node *node, mlir::MLIRContext *context);
