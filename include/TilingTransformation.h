@@ -8,49 +8,22 @@
 /// contains the declartion of the tiling transformation
 ///
 //===----------------------------------------------------------------------===//
+#ifndef MLSCEDULER_TILING_TRANSFORMATION_H_
+#define MLSCEDULER_TILING_TRANSFORMATION_H_
 
 #include "Transformation.h"
 #include "MLIRCodeIR.h"
 #include "Node.h"
 #include "Utils.h"
 
-#include "mlir/Tools/mlir-opt/MlirOptMain.h"
-#include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
-#include "mlir/Conversion/LinalgToLLVM/LinalgToLLVM.h"
-#include "mlir/Dialect/MemRef/Transforms/Passes.h"
-#include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
-#include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
-#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h"
-#include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
-#include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
-
-#include "mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
-
-
-#include "mlir/Conversion/IndexToLLVM/IndexToLLVM.h"
-
-#include "mlir/Conversion/MathToLLVM/MathToLLVM.h"
-
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
-#include "mlir/Dialect/Linalg/IR/Linalg.h"
-
-#include "mlir/IR/DialectRegistry.h"
-#include "mlir/Pass/Pass.h"
-#include "mlir/Pass/PassManager.h"
-#include "mlir/Pass/PassOptions.h"
-#include "mlir/Transforms/Passes.h"
-#include "mlir/Dialect/Affine/Passes.h"
-#include "mlir/Dialect/Linalg/Passes.h"
-
 #include "mlir/Dialect/SCF/Transforms/TileUsingInterface.h"
-#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Transform/Utils/DiagnosedSilenceableFailure.h"
+#include "mlir/IR/Value.h"
 
-// #include "/home/nassimiheb/MLIR/llvm-project/mlir/lib/Dialect/Affine/Transforms/LoopTiling.cpp"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
 
 #include <iostream>
 #include <random>
-#pragma once
 
 class Tiling: public Transformation{
     private:
@@ -77,3 +50,5 @@ class Tiling: public Transformation{
 
         mlir::scf::SCFTilingOptions getOptions();
 };
+
+#endif // MLSCEDULER_TILING_TRANSFORMATION_H_

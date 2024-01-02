@@ -10,12 +10,15 @@
 // the module.
 //
 //===----------------------------------------------------------------------===//
+#ifndef MLSCEDULER_TRANSFORM_DIALECT_INTERPRETER_H_
+#define MLSCEDULER_TRANSFORM_DIALECT_INTERPRETER_H_
 
 using namespace mlir; 
 
 std::unique_ptr<mlir::Pass>
 createTransformDialectInterpreterPass(llvm::StringRef transformOp);
 
+#endif // MLSCEDULER_TRANSFORM_DIALECT_INTERPRETER_H_
 /*auto
 createTransformDialectEraseSchedulePass();*/
 

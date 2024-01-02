@@ -8,9 +8,10 @@
 /// schedule
 ///
 //===----------------------------------------------------------------------===//
+#ifndef MLSCEDULER_SEARCH_METHOD_H_
+#define MLSCEDULER_SEARCH_METHOD_H_
 
 #include "Node.h"
-#pragma once
 
 using namespace mlir;
 class SearchMethod {
@@ -19,3 +20,5 @@ class SearchMethod {
     public:
         virtual Node * runSearchMethod(Node * root) = 0;
 };
+
+#endif // MLSCEDULER_SEARCH_METHOD_H_

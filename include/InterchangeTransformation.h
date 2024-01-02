@@ -9,49 +9,18 @@
 ///
 //===----------------------------------------------------------------------===//
 
+#ifndef MLSCEDULER_INTERCHANGE_TRANSFORMATION_H_
+#define MLSCEDULER_INTERCHANGE_TRANSFORMATION_H_
+
 #include "Transformation.h"
 #include "MLIRCodeIR.h"
 #include "Node.h"
+#include "Utils.h"
 
-#include "mlir/Tools/mlir-opt/MlirOptMain.h"
-#include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
-#include "mlir/Conversion/LinalgToLLVM/LinalgToLLVM.h"
-#include "mlir/Dialect/MemRef/Transforms/Passes.h"
-#include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
-#include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
-#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h"
-#include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
-#include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
-
-#include "mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
-
-
-#include "mlir/Conversion/IndexToLLVM/IndexToLLVM.h"
-
-#include "mlir/Conversion/MathToLLVM/MathToLLVM.h"
-
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
-
-#include "mlir/IR/DialectRegistry.h"
-#include "mlir/Pass/Pass.h"
-#include "mlir/Pass/PassManager.h"
-#include "mlir/Pass/PassOptions.h"
-#include "mlir/Transforms/Passes.h"
-#include "mlir/Dialect/Affine/Passes.h"
 #include "mlir/Dialect/Linalg/Passes.h"
-#include "mlir/Dialect/Affine/LoopUtils.h"
-
-
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-
-#include "mlir/Dialect/Affine/Analysis/Utils.h"
-// #include "/home/nassimiheb/MLIR/llvm-project/mlir/lib/Dialect/Affine/Transforms/LoopTiling.cpp"
-
 
 #include <iostream>
 #include <random>
-#pragma once
 
 class Interchange: public Transformation{
     private:
@@ -77,3 +46,5 @@ class Interchange: public Transformation{
         /// Overrides the createCandidates() method from the base class Transformation.
         static SmallVector<Node* , 2>  createInterchangeCandidates(Node* node, mlir::MLIRContext *context);
 };
+
+#endif // MLSCEDULER_INTERCHANGE_TRANSFORMATION_H_

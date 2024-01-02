@@ -7,10 +7,10 @@
 /// code representation and its manipulations
 ///
 //===----------------------------------------------------------------------===//
-#pragma once
+#ifndef MLSCEDULER_MLIRCODEIR_H_
+#define MLSCEDULER_MLIRCODEIR_H_
 
 #include "CodeIR.h"
-
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
@@ -26,6 +26,7 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_ostream.h"
+
 
 #include <iostream>
 using namespace mlir;
@@ -51,3 +52,5 @@ class MLIRCodeIR : public CodeIR{
 
         CodeIR* setMLIRIR(Operation* module);
 };
+
+#endif // MLSCHEDULER_MLIRCODEIR_H_

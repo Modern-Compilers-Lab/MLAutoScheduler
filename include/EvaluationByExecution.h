@@ -8,20 +8,14 @@
 /// the reel execution time after running the code
 ///
 //===----------------------------------------------------------------------===//
+#ifndef MLSCEDULER_EVALUATION_BY_EXECUTION_H_
+#define MLSCEDULER_EVALUATION_BY_EXECUTION_H_
 
 #include "Evaluation.h"
 #include "Node.h"
-
-#include "mlir/Dialect/SCF/Transforms/Passes.h"
+#include "TransformDialectInterpreter.h"
+#include "TransformInterpreterPassBase.h"
 #include "CustomPasses/Passes.h"
-
-#include "mlir/IR/AsmState.h"
-#include "mlir/IR/OperationSupport.h"
-#include "mlir/IR/BuiltinOps.h"
-
-#include "mlir/ExecutionEngine/JitRunner.h"
-#include "mlir/ExecutionEngine/OptUtils.h"
-
 
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
@@ -31,6 +25,8 @@
 
 #include "mlir/Target/LLVMIR/Dialect/All.h"
 
+#include "mlir/Parser/Parser.h"
+
 #include <utility>
 #include <chrono>
 #include <iostream>
@@ -39,15 +35,11 @@
 #include<sys/wait.h>
 #include<unistd.h>
 
-#include "mlir/Parser/Parser.h"
 #include <fstream>
 #include <ctime>
 
 #define READ 0
 #define WRITE 1
-
-
-#pragma once
 
 using namespace mlir;
 class EvaluationByExecution {
@@ -63,3 +55,5 @@ class EvaluationByExecution {
         /// Returns: The evaluation result as a double value.
         std::string evaluateTransformation(/*int argc, char** argv, DialectRegistry &registry,*/ Node* node);
 };
+
+#endif // MLSCEDULER_EVALUATION_BY_EXECUTION_H_

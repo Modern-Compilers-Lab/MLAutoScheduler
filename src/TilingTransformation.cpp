@@ -8,11 +8,7 @@
 ///
 //===----------------------------------------------------------------------===//
 #include "TilingTransformation.h"
-#include "mlir/Dialect/SCF/Transforms/TileUsingInterface.h"
-#include "mlir/Dialect/Transform/Utils/DiagnosedSilenceableFailure.h"
-#include "mlir/IR/Value.h"
 
-#pragma once
 using namespace mlir;
 
 Tiling::Tiling(mlir::TilingInterface *op,
@@ -55,6 +51,17 @@ std::string Tiling::printTransformation()
   }
   result += " )";
 
+     result += "I( ";
+    // Iterate over the elements of the vector and append them to the string
+    for (size_t i = 0; i < (this->options.interchangeVector).size(); ++i)
+    {
+      result += std::to_string((this->options.interchangeVector)[i]);
+      if (i != (this->options.interchangeVector).size() - 1)
+      {
+        result += ", ";
+      }
+    }
+  result += " )";
   return result;
 }
 void Tiling::applyTransformation(CodeIR CodeIr)
@@ -131,7 +138,8 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
 
   SmallVector<int64_t, 4> concatenatedCombinations;
 
-  SmallVector<SmallVector<Node *, 2>> ChildNodesList;
+  // SmallVector<SmallVector<Node *, 2>> ChildNodesList;
+  SmallVector<Node* , 2> ChildNodes;
 
   SmallVector<SmallVector<int64_t, 4>, 4> SelectedTileCombinations;
 
@@ -142,25 +150,15 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
 
   Operation *target = ((Operation *)(*CodeIr)
                            .getIr());
-  SmallVector<Node *, 2> ChildNodes;
 
-  // tileCombinations = generateTileCombinations(loops.size(),
-  //                                    possibleTileSizes);
   target->walk([&](Operation *op)
                {
     if ((op->getName().getStringRef()).str() != "linalg.fill" ){
-             // std::cout << "op = "<<(op->getName().getStringRef()).str()<<std::endl;
       if (mlir::TilingInterface tileableOp = dyn_cast<mlir::TilingInterface>(op)) {
 
-          SmallVector<Node* , 2> ChildNodes;
+          // SmallVector<Node* , 2> ChildNodes;
           SmallVector<SmallVector<int64_t, 4>, 4> tileCombinations;
           SmallVector<utils::IteratorType> loops = tileableOp.getLoopIteratorTypes();
-          std::cout << loops.size() <<std::endl;
-          /*if(loops.size()==3){
-           llvm::SmallVector<int64_t, 4> elementsToInsert = {4, 2, 15};
-
-          // Insert the elements into tileCombinations
-          tileCombinations.push_back(elementsToInsert);}*/
 
           OpBuilder builder(context);
           SmallVector<Range> iterationDomain = tileableOp.getIterationDomain(builder);
@@ -171,76 +169,53 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
                 generateTileForOpCombinations(/*NumberLoops*/iterationDomain.size(), iterationDomain);
             tileCombinations.insert(tileCombinations.end(), newCombinations.begin(), newCombinations.end());
           //}
-          /*tileCombinations.erase(
-              std::remove_if(
-                  tileCombinations.begin(),
-                  tileCombinations.end(),
-                  [](const llvm::SmallVector<int64_t, 4> &innerVec) {
-                      return innerVec.size() == 1;
-                  }
-              ),
-              tileCombinations.end()
-          );*/
-           /*std::cout << "Upper BOUNDS\n";
-          for (const int64_t value : upperBounds) {
-            std::cout << value << " ";
-            std::cout << std::endl;
-          }
-          std::cout << "Deviders\n";
-          for (const auto &outerVector : possibleTileSizes) {
-            for (const int64_t value : outerVector) {
-                std::cout << value << " ";
-            }
-            std::cout << std::endl;
-          }
-          std::cout << "Tiling Sizes\n";
-          for (const auto &outerVector : tileCombinations) {
-            for (const int64_t value : outerVector) {
-                std::cout << value << " ";
-            }
-            std::cout << std::endl;
-          }
-          std::cout << "End Tiling Sizes\n";*/
-          
-         //tileCombinations.erase(tileCombinations.begin());
-         
-          /*tileCombinations = generateTileCombinations(loops.size(),
-                                      possibleTileSizes);*/
+
+          std::vector<std::vector<unsigned>> values = 
+                generateCandidates(loops.size() , 5);
+        SelectedTileCombinations.push_back({0, 0, 100});
           /*std::sample(
             tileCombinations.begin(),
             tileCombinations.end(),
             std::back_inserter(SelectedTileCombinations),
             1,
             std::mt19937{std::random_device{}()});*/
-          for (const auto& candidate : tileCombinations){
+          for (const auto& candidate : SelectedTileCombinations){
+            for (const auto& interchange : values){    
+              MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)CodeIr->cloneIr();
+              Node* ChildNode = new Node (ClonedCode);
+              
+              std::vector<Transformation*> TransList= node->getTransformationList();
+              ChildNode->setTransformationList(TransList);
 
+              scf::SCFTilingOptions options;
+
+              options.setTileSizes(candidate);
+              llvm::SmallVector<int64_t, 4> targetSmallVector;
+
+              targetSmallVector.reserve(interchange.size()); // Optional optimization if you know the size beforehand
+
+              // Copy elements from std::vector to SmallVector
+              for (const auto& element : interchange) {
+                  targetSmallVector.push_back((element));
+              }
+      
+              options.setInterchange(targetSmallVector);
+
+              Tiling *tiling  = 
+                new Tiling(&tileableOp,
+                                options, 
+                                candidate,
+                                context);
+
+              ChildNode->setTransformation(tiling); 
+              
+              ChildNode->addTransformation(tiling);
+              
+              ChildNodes.push_back(ChildNode);
+              }
  
-            MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)CodeIr->cloneIr();
-            Node* ChildNode = new Node (ClonedCode);
-            
-
-            std::vector<Transformation*> TransList= node->getTransformationList();
-            ChildNode->setTransformationList(TransList);
-
-            scf::SCFTilingOptions options;
-            //scf::SCFTilingOptions scfoptions;
-            //std::cout <<"SIZE ====" << loops.size();
-            options.setTileSizes(candidate);
-            //options.setLoopType(linalg::LinalgTilingLoopType::Loops);
-            //options.setTilingOptions(scfoptions);
-            Tiling *tiling  = 
-              new Tiling(&tileableOp,
-                              options, 
-                              candidate,
-                              context);
-
-            ChildNode->setTransformation(tiling); 
-            
-            ChildNode->addTransformation(tiling);
-            
-            ChildNodes.push_back(ChildNode);
           }
-          ChildNodesList.push_back(ChildNodes);
+          // ChildNodesList.push_back(ChildNodes);
 
         } } });
 
@@ -275,8 +250,8 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
     ChildNodesList.push_back(ChildNodes);*/
 
   int OpIndex = 0;
-  for (auto ChildNodes : ChildNodesList)
-  {
+  // for (auto ChildNodes : ChildNodesList)
+  // {
     for (auto node : ChildNodes)
     {
       Operation *ClonedTarget = ((Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
@@ -285,8 +260,7 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
 
       int ClonedOpIndex = 0;
       ClonedTarget->walk([&](Operation *op)
-                         {
-                          
+                         { 
                        /*if (mlir::TilingInterface ClonedTileableOp 
                                 =dyn_cast<mlir::TilingInterface>(op)) { 
                         IRRewriter rewriter(context);
@@ -296,12 +270,9 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
                           if ((op1->getName().getStringRef()).str() == "scf.forall") {
                                   std::cout<<"for.all\n";
                                 SmallVector<Operation *>res =   tileAndFuseFirstExtractUseThroughContainingOpBlockArgument(rewriter,diag,op,op1);
-
                                  }
-                         });
-                        
-                       
-                        }*/
+                         });}*/
+
               if (mlir::TilingInterface ClonedTileableOp 
                                 =dyn_cast<mlir::TilingInterface>(op)) {
                   if ((op->getName().getStringRef()).str() != "linalg.fill" ){
@@ -317,15 +288,16 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
                 } });
     }
     OpIndex++;
-  }
+  // }
 
-  SmallVector<Node *, 2> ResChildNodes;
+  /*SmallVector<Node *, 2> ResChildNodes;
   for (const auto &innerVector : ChildNodesList)
   {
     ResChildNodes.insert(ResChildNodes.end(), innerVector.begin(), innerVector.end());
   }
 
-  return ResChildNodes;
+  return ResChildNodes;*/
+  return  ChildNodes;
 
   // // // Print the generated tile combinations
   // // for (const auto& combination : SelectedTileCombinations) {

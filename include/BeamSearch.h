@@ -7,6 +7,8 @@
 /// contains a definition of the beam search method 
 ///
 //===----------------------------------------------------------------------===//
+#ifndef MLSCEDULER_BEAM_SEARCH_H_
+#define MLSCEDULER_BEAM_SEARCH_H_
 
 #include "SearchMethod.h"
 #include "Node.h"
@@ -17,7 +19,6 @@
 #include "VectorizationTransformation.h"
 
 #include <queue>
-#pragma once
 
 using namespace mlir;
 class BeamSearch : public SearchMethod{
@@ -33,3 +34,5 @@ class BeamSearch : public SearchMethod{
         Node * runSearchMethod(Node * root) override;
 
 };
+
+#endif // MLSCEDULER_BEAM_SEARCH_H_

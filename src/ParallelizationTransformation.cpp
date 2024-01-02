@@ -8,9 +8,9 @@
 ///
 //===----------------------------------------------------------------------===//
 #include "ParallelizationTransformation.h"
-#include "mlir/Dialect/Transform/Utils/DiagnosedSilenceableFailure.h"
-#include "/scratch/ia2280/LLVM/llvm-project/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp";
-#pragma once
+
+#include "/scratch/ia2280/LLVM/llvm-project/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp"
+#include "/scratch/ia2280/LLVM/llvm-project/mlir/test/lib/Dialect/Linalg/TestLinalgFusionTransforms.cpp"
 
 using namespace mlir;
 
@@ -22,10 +22,72 @@ using namespace mlir;
 SmallVector<SmallVector<int64_t, 4>, 4>
 generateTileForAllOpCombinations(int64_t maxNumberLoops,
                                  const std::vector<int64_t> &possibleTileSizes);*/
+static LogicalResult fuseLinalgOpsGreedily(Operation* f) {
+  OpBuilder b(f);
+  DenseSet<Operation *> eraseSet;
+
+  // Save original Linalg ops, we only want to make a pass over those.
+  SmallVector<LinalgOp, 8> linalgOps;
+  std::cout<<"HERE\n";
+
+  f->walk([&](LinalgOp op) {
+    // TODO: support multi-results.
+    if (op->getNumResults() <= 1){
+linalgOps.push_back(op);
+
+    }
+      
+  });
+
+  // Tile and Fuse for tensors inputs (TODO: all tensor operands).
+  bool changed = false;
+  for (LinalgOp linalgOp : llvm::reverse(linalgOps)) 
+  {
+    
+    for (OpOperand &opOperand : linalgOp->getOpOperands()) {
+     
+      if (isa<MemRefType>(opOperand.get().getType())){
+        std::cout << "TYPE\n";
+          continue;
+      }
+        
+      if (isa<RankedTensorType>(opOperand.get().getType())) {
+        // Tile and Fuse tensor input.
+        
+        if (opOperand.getOperandNumber() >= linalgOp.getNumDpsInputs())
+        {
+          std::cout << "NOT INPUT\n";
+           continue;
+        }
+         
+        auto info = fuseProducerOfTensor(b, opOperand);
+        if (failed(info))
+          continue;
+        
+        auto *originalOp = info->originalProducer.getOperation();
+        auto *originalOpInLinalgOpsVector =
+            std::find(linalgOps.begin(), linalgOps.end(), originalOp);
+        *originalOpInLinalgOpsVector = info->fusedProducer;
+        // Don't mark for erasure in the tensor case, let DCE handle this.
+        changed = true;
+      }
+    }
+  }
+  // The `fuseProducerOfBuffer` function performs structural checks and in
+  // particular that no covering read or write exist between the consumer and
+  // the producer. As a consequence, the only fusions that may occur preserve
+  // subsequent dependences and are guaranteed by construction to produce the
+  // whole view. We may thus erase the producer once it is fused.
+  for (auto *e : eraseSet)
+    e->erase();
+
+  return changed ? success() : failure();
+}
 DiagnosedSilenceableFailure FuseIntoContainingOperation(Operation *containingOp, Operation *target, IRRewriter &rewriter)
 {
 
   SmallVector<Operation *> fusedOps;
+  OpBuilder b(containingOp);
   // auto producerOps = state.getPayloadOps(getProducerOp());
   // auto containingOps = state.getPayloadOps(getContainingOp());
 
@@ -65,8 +127,80 @@ DiagnosedSilenceableFailure FuseIntoContainingOperation(Operation *containingOp,
     }
     return failure();
   };*/
+  /*SmallVector<LinalgOp, 8> linalgOps;
+  target->walk([&](LinalgOp producerOp) {
+    // TODO: support multi-results.
+    if (producerOp->getNumResults() <= 1){
+linalgOps.push_back(producerOp);
 
-  target->walk([&](Operation *producerOp)
+    }
+      
+  });
+
+  bool changed = false;
+  for (LinalgOp linalgOp : linalgOps) 
+  {
+ 
+    for (OpOperand &opOperand : linalgOp->getOpOperands()) {
+     
+      if (isa<MemRefType>(opOperand.get().getType())){
+          continue;
+      }
+        
+      if (isa<RankedTensorType>(opOperand.get().getType())) {
+        // Tile and Fuse tensor input.
+        
+        if (opOperand.getOperandNumber() < linalgOp.getNumDpsInputs())
+        {
+           continue;
+        }
+   std::cout << "OPERATIOn\n";
+    linalgOp.dump();
+       /* Diagnostic diag(linalgOp->getLoc(),DiagnosticSeverity::Remark);
+        diag << "could not fuse " << *linalgOp << " into " << *containingOp;
+        auto [tiledOps, newContainingOp] =
+        tileAndFuseFirstExtractUse(rewriter, diag, linalgOp, containingOp);
+        
+        if (!tiledOps.empty()) {
+          fusedOps.append(tiledOps);
+          if (newContainingOp) {
+            rewriter.eraseOp(containingOp);
+            containingOp = newContainingOp;
+          }
+        }else{
+          std::cout << "TRYING TO FUSE\n";
+            SmallVector<Operation *> tiledContainingOpOperand =
+            tileAndFuseFirstExtractUseThroughContainingOpBlockArgument(
+            rewriter, diag, linalgOp, containingOp);
+            std::cout << "FUSED\n";
+            if (!tiledContainingOpOperand.empty()) {
+              fusedOps.append(tiledContainingOpOperand);
+            }else{
+              /*Operation *cloned =
+                cloneAndFuseFirstUse(rewriter, diag, producerOp, containingOp);
+                 cloned->dump();
+                if (cloned) {
+                
+                  fusedOps.push_back(cloned);
+                  //continue;
+                }*/
+           //}
+        //}
+ 
+       /* auto info = fuseProducerOfTensor(b, opOperand);
+        if (failed(info))
+          continue;
+        
+        auto *originalOp = info->originalProducer.getOperation();
+        auto *originalOpInLinalgOpsVector =
+            std::find(linalgOps.begin(), linalgOps.end(), originalOp);
+        *originalOpInLinalgOpsVector = info->fusedProducer;
+        // Don't mark for erasure in the tensor case, let DCE handle this.*/
+        /*changed = true;
+      }
+    }
+  }*/
+ target->walk([&](Operation *producerOp)
                {
     // TEMP: Check if the operation is a "linalg.fill" operation
     if ((producerOp->getName().getStringRef()).str() == "linalg.fill")
@@ -97,7 +231,7 @@ DiagnosedSilenceableFailure FuseIntoContainingOperation(Operation *containingOp,
                   fusedOps.push_back(cloned);
                   //continue;
                 }*/
-            }
+           }
         }
  
     } });
@@ -155,9 +289,9 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
   // Initialize vectors to store tile combinations
   SmallVector<SmallVector<int64_t, 4>, 4> tileCombinations;
 
-  // Initialize a list to store child nodes
-  SmallVector<SmallVector<Node *, 2>> ChildNodesList;
-
+  // Initialize a list to store child nodes (commented out now)
+  // SmallVector<SmallVector<Node *, 2>> ChildNodesList;
+  SmallVector<Node *, 2> ChildNodes;
   // Extract the transformed code IR from the input node
   MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
 
@@ -171,12 +305,12 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
     // TEMP: Check if the operation is not a "linalg.fill" operation
     if ((op->getName().getStringRef()).str() != "linalg.fill")
     {
+//std::cout<<(op->getName().getIdentifier().str())<<std::endl;
       // Check if the operation supports tiling
       if (mlir::TilingInterface tileableOp = dyn_cast<mlir::TilingInterface>(op))
       {
-
-        SmallVector<Node *, 2> ChildNodes;
-
+        //op->getLoc()->dump();
+        //SmallVector<Node *, 2> ChildNodes;
         OpBuilder builder(context);
         SmallVector<Range> iterationDomain = tileableOp.getIterationDomain(builder);
 
@@ -201,45 +335,23 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
             }
             possibleTileSizes.push_back(dividers);
         }
-        for (size_t NumberLoops = 2; NumberLoops <= upperBounds.size(); ++NumberLoops)
+        for (size_t NumberLoops = 2; NumberLoops <= 2; ++NumberLoops)
         {
           SmallVector<SmallVector<int64_t, 4>, 4> newCombinations =
               generateTileForAllOpCombinations(NumberLoops, possibleTileSizes, upperBounds);
           tileCombinations.insert(tileCombinations.end(), newCombinations.begin(), newCombinations.end());
         }
-        /* std::cout << "Upper BOUNDS\n";
-        for (const int64_t value : upperBounds) {
-          std::cout << value << " ";
-          std::cout << std::endl;
-        }
-         std::cout << "Deviders\n";
-        for (const auto &outerVector : possibleTileSizes) {
-          for (const int64_t value : outerVector) {
-              std::cout << value << " ";
-          }
-          std::cout << std::endl;
-        }
-            std::cout << "Tiling Sizes\n";
-        for (const auto &outerVector : tileCombinations) {
-          for (const int64_t value : outerVector) {
-              std::cout << value << " ";
-          }
-          std::cout << std::endl;
-         }
-        std::cout << "End Tiling Sizes\n";*/
-        //llvm::SmallVector<int64_t, 4> elementsToInsert = {200, 10};
 
-        // Insert the elements into tileCombinations
-        //tileCombinations.push_back(elementsToInsert);
-        /*SmallVector<SmallVector<int64_t, 4>, 4> SelectedTileCombinations;
-          std::sample(
+        SmallVector<SmallVector<int64_t, 4>, 4> SelectedTileCombinations;
+        SelectedTileCombinations.push_back({2, 200});
+          /*std::sample(
               tileCombinations.begin(),
               tileCombinations.end(),
               std::back_inserter(SelectedTileCombinations),
               1,
               std::mt19937{std::random_device{}()}
           );*/
-      for (const auto &candidate : tileCombinations)
+      for (const auto &candidate : SelectedTileCombinations)
       {
 
         MLIRCodeIR *ClonedCode = (MLIRCodeIR *)CodeIr->cloneIr();
@@ -259,11 +371,11 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
 
         ChildNodes.push_back(ChildNode);
       }
-      ChildNodesList.push_back(ChildNodes);
+      //ChildNodesList.push_back(ChildNodes);
     } } });
   int OpIndex = 0;
-  for (auto ChildNodes : ChildNodesList)
-  {
+  //for (auto ChildNodes : ChildNodesList)
+  //{
     for (auto node : ChildNodes)
     {
       Operation *ClonedTarget = ((Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
@@ -273,8 +385,14 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
       int ClonedOpIndex = 0;
       ClonedTarget->walk([&](Operation *op)
                          {
+                          
         if (mlir::TilingInterface ClonedTileableOp 
                           = dyn_cast<mlir::TilingInterface>(op)) {
+     if ((op->getName().getStringRef()).str() == "linalg.matmul"){
+            ClonedOpIndex++;
+          }
+   
+//if(ClonedOpIndex==2){
             if ((op->getName().getStringRef()).str() != "linalg.fill" ){
             
               IRRewriter rewriter(context);
@@ -288,27 +406,52 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
               rewriter.setInsertionPoint(ClonedTileableOp);
               ArrayRef<OpFoldResult> tileSizes =  llvm::makeArrayRef(opFoldResults);
               FailureOr<linalg::ForallTilingResult> tilingResult = 
-                          linalg::tileToForallOpUsingTileSizes(rewriter,ClonedTileableOp,tileSizes,mapping);
+                         linalg::tileToForallOpUsingTileSizes(rewriter,ClonedTileableOp,tileSizes,mapping);
               if (!failed(tilingResult))
                   rewriter.replaceOp(ClonedTileableOp, tilingResult->tileOp->getResults());    
-
+          
               IRRewriter rewriter1(context);
-              FuseIntoContainingOperation(tilingResult->tileOp, ClonedTarget, rewriter1);
-             
-            }
-          ClonedOpIndex++;
-          } });
+               
+               /*PassManager pm((ClonedTarget)->getName());
+              mlir::OpPassManager &optPM = pm.nest<mlir::func::FuncOp>();
+            optPM.addPass(std::make_unique<TestLinalgGreedyFusion>());
+            if (failed(pm.run(ClonedTarget))){}
+            /*RewritePatternSet patterns =
+                linalg::getLinalgTilingCanonicalizationPatterns(context);
+            patterns.add<ExtractSliceOfPadTensorSwapPattern>(context);
+            scf::populateSCFForLoopCanonicalizationPatterns(patterns);
+            FrozenRewritePatternSet frozenPatterns(std::move(patterns));
+            PassManager pm((ClonedTarget)->getName());
+            pm.addPass(mlir::createLoopInvariantCodeMotionPass());
+            pm.addPass(mlir::createCanonicalizerPass());
+            pm.addPass(mlir::createCSEPass());
+            do {
+              (void)applyPatternsAndFoldGreedily(ClonedTarget, frozenPatterns);
+             if (failed(pm.run(ClonedTarget)))
+                {}
+            } while (succeeded(fuseLinalgOpsGreedily(ClonedTarget)));*/
+                    FuseIntoContainingOperation(tilingResult->tileOp, ClonedTarget, rewriter1);
+                           
+          }
+          
+          //}
+ 
+          }
+           });
     }
-    OpIndex++;
-  }
+  //OpIndex++;
+  //}
 
-  SmallVector<Node *, 2> ResChildNodes;
+  // Commented out when not using the nested loops for the applciation of the transformation
+  /*SmallVector<Node *, 2> ResChildNodes;
   for (const auto &innerVector : ChildNodesList)
   {
     ResChildNodes.insert(ResChildNodes.end(), innerVector.begin(), innerVector.end());
   }
-
-  return ResChildNodes;
+  
+  return ResChildNodes;*/
+  std::cout<<"FUSION DONE\n";
+  return ChildNodes;
 }
 
 /*void generateForAllOpCombinations(const SmallVector<int64_t, 4> &tileSizes,
