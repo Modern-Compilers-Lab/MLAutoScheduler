@@ -11,8 +11,6 @@
 
 #include "EvaluationByExecution.h"
 
-//#include "/scratch/ia2280/mlir_autoScheduler/MLScheduler/src/Transform/TransformDialectInterpreter.cpp"
-#pragma once
 using namespace mlir;
 std::string getTransformedCode(std::string inputCode, std::string transfromDialectString);
 std::string getEvaluation(std::string inputCode);
@@ -36,7 +34,7 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)CodeIr->cloneIr();
     
     //Operation *ClonedTarget = ((Operation *)(*node->getTransformedCodeIr()).getIr());
-    Operation *op = ((Operation *)(*(ClonedCode))
+    mlir::Operation *op = ((mlir::Operation *)(*(ClonedCode))
                                      .getIr());
     // Printing the transformed code
     if (std::getenv("AS_VERBOSE") != nullptr)
@@ -100,14 +98,14 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     //op->print(output);
    
 
-    /*std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n %f = transform.structured.match ops{[\"func.func\"]} in %variant_op : (!transform.any_op) -> !transform.any_op \n transform.apply_patterns to %f {  \n transform.apply_patterns.vector.lower_contraction lowering_strategy = \"outerproduct\" \n transform.apply_patterns.vector.transfer_permutation_patterns \n transform.apply_patterns.vector.lower_multi_reduction lowering_strategy = \"innerparallel\" \n transform.apply_patterns.vector.split_transfer_full_partial split_transfer_strategy = \"vector-transfer\" \n transform.apply_patterns.vector.transfer_to_scf max_transfer_rank = 1 full_unroll = true \n transform.apply_patterns.vector.lower_transfer max_transfer_rank = 1 \n transform.apply_patterns.vector.lower_shape_cast \n transform.apply_patterns.vector.lower_transpose lowering_strategy = \"shuffle_1d\" \n transform.apply_patterns.canonicalization} \n : !transform.any_op}";
-    std::string transformedString = getTransformedCode(str1, transformDialectString);
+    std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n %f = transform.structured.match ops{[\"func.func\"]} in %variant_op : (!transform.any_op) -> !transform.any_op \n transform.apply_patterns to %f {  \n transform.apply_patterns.vector.lower_contraction lowering_strategy = \"outerproduct\" \n transform.apply_patterns.vector.transfer_permutation_patterns \n transform.apply_patterns.vector.lower_multi_reduction lowering_strategy = \"innerparallel\" \n transform.apply_patterns.vector.split_transfer_full_partial split_transfer_strategy = \"vector-transfer\" \n transform.apply_patterns.vector.transfer_to_scf max_transfer_rank = 1 full_unroll = true \n transform.apply_patterns.vector.lower_transfer max_transfer_rank = 1 \n transform.apply_patterns.vector.lower_shape_cast \n transform.apply_patterns.vector.lower_transpose lowering_strategy = \"shuffle_1d\" \n transform.apply_patterns.canonicalization} \n : !transform.any_op}";
+    /*std::string transformedString = getTransformedCode(str1, transformDialectString);
     if (transformedString == "process did not exit normally")
     {
         return "-1";
-    }
+    }*/
     // TEMP : The interpreter introduces an extra "module {}", removing it
-    std::string cleanedString = removeExtraModuleTagCreated(transformedString);
+    // std::string cleanedString = removeExtraModuleTagCreated(transformedString);
     //std::cout<<cleanedString<<std::endl;
     // Continue the lowerings of the code to llvm runnable code*/
     //std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n %named_conv = transform.structured.match ops{[\"linalg.matmul\"]} in %variant_op : (!transform.any_op) -> !transform.any_op \n %forall_l1, %conv_l1 = transform.structured.tile_to_forall_op %named_conv tile_sizes [10, 10]: (!transform.any_op) -> (!transform.any_op, !transform.any_op) }";
@@ -129,7 +127,8 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     options.bufferizeFunctionBoundaries = true;
     options.createDeallocs = true;
     options.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
-    // pm.addPass(createTransformDialectInterpreterPass(transformDialectString));
+    pm.addPass(createTransformDialectInterpreterPass(transformDialectString));
+
     //pm.addPass(createTestTransformDialectEraseSchedulePass());
     pm.addPass(mlir::createLoopInvariantCodeMotionPass());
     pm.addPass(mlir::createCSEPass());
@@ -176,6 +175,8 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     // Getting the evaluation uisng mlir-cpu-runner, the function uses a system call
     //auto start_eval = std::chrono::high_resolution_clock::now();
     std::string OutputData = getEvaluation(outString);
+        //op->dump();
+   
     /*auto end_eval = std::chrono::high_resolution_clock::now();
     auto duration_eval = std::chrono::duration_cast<std::chrono::microseconds>(end_eval - start_eval);*/
     
@@ -423,7 +424,7 @@ std::string getEvaluation(std::string inputCode)
     else
     {
         printf("Cpu Runner Child process did not exit normally.\n");
-        return "Cpu Runner Child process did not exit normally";
+        return "9000000000000000000";
     }
 }
 
