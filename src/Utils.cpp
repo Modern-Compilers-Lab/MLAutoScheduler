@@ -227,7 +227,6 @@ generateTileForAllOpCombinations(int64_t maxNumberLoops,
                                                              combinations.end());
 }
 
-
 std::vector<std::vector<unsigned>> generateCandidates(int64_t numLoops,
                                                       int64_t NbElement)
 {
@@ -251,7 +250,7 @@ std::vector<std::vector<unsigned>> generateCandidates(int64_t numLoops,
       candidates.begin(),
       candidates.end(),
       std::back_inserter(out),
-      10,
+      1,
       std::mt19937{std::random_device{}()});
   return out;
   // return candidates;
@@ -280,4 +279,22 @@ void generateCandidateHelper(std::vector<unsigned> &values,
       values[i] = temp; // Restore the value
     }
   }
+}
+
+llvm::SmallVector<mlir::linalg::LinalgOp, 4> getLinalgOps(mlir::Operation *prog)
+{
+
+  llvm::SmallVector<mlir::linalg::LinalgOp, 4> linalgOps;
+  prog->walk([&](mlir::linalg::LinalgOp op)
+             {
+                 // TODO: support multi-results.
+                if ((op->getName().getStringRef()).str() != "linalg.fill"){
+                  if (op->getNumResults() <= 1)
+                  {
+
+                        linalgOps.push_back(op);
+                  } } });
+  std::reverse(linalgOps.begin(), linalgOps.end());
+
+  return linalgOps;
 }
