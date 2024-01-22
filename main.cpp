@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdio>
 #include <cstring>
+#include <unordered_set>
 
 // Include MLIR-related headers
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
@@ -55,9 +56,47 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/ToolOutputFile.h"
 
-
 using namespace mlir;
+namespace OptimizationEnum
+{
+  enum Optimization
+  {
+    Parallelization = 1,
+    Tiling = 2,
+    Vectorization = 3
+  };
+}
+SmallVector<Node *, 2> func1(Node *root, int stage, SmallVector<mlir::linalg::LinalgOp, 4> linalgOps, mlir::MLIRContext *context, OptimizationEnum::Optimization optimization);
+SmallVector<Node *, 2> func1(Node *root, int stage, SmallVector<mlir::linalg::LinalgOp, 4> linalgOps, mlir::MLIRContext *context, OptimizationEnum::Optimization optimization)
+{
+  SmallVector<Node *, 2> list;
 
+  //for (int i = stage; i < linalgOps.size(); i++)
+
+  if (stage < linalgOps.size()){
+    SmallVector<Node *, 2> optList;
+    switch (optimization)
+    {
+    case OptimizationEnum::Parallelization:
+      optList = Parallelization::createParallelizationCandidates(root, context, stage, linalgOps);
+      break;
+    case OptimizationEnum::Tiling:
+      optList = Tiling::createTilingCandidates(root, context, stage, linalgOps);
+      break;
+    default:
+      std::cout << "Invalid Optimization Strategy" << std::endl;
+      break;
+    }
+    list.insert(list.end(), optList.begin(), optList.end());
+    for (Node *node : optList)
+    {
+      SmallVector<Node *, 2> tempList = func1(node, stage + 1, linalgOps, context, optimization);
+      list.insert(list.end(), tempList.begin(), tempList.end());
+    }
+  }
+
+  return list;
+}
 int main(int argc, char **argv)
 {
   // Check if the correct number of command-line arguments is provided
@@ -106,92 +145,257 @@ int main(int argc, char **argv)
   context.loadDialect<vector::VectorDialect>();
 
   // Parse the input file and obtain an MLIR module
-  mlir::OwningOpRef<Operation *> module1 =
-      (mlir::OwningOpRef<Operation *>)codeIr.parseInputFile(inputFilename, context);
+  mlir::OwningOpRef<mlir::Operation *> module1 =
+      (mlir::OwningOpRef<mlir::Operation *>)codeIr.parseInputFile(inputFilename, context);
 
   // Dump the contents of the parsed module
   (*module1)->dump();
 
   // Create a root Node for transformations
   Node *root = new Node(&codeIr);
-  EvaluationByExecution evaluator =  EvaluationByExecution(functionName+"_logs_best_exhustive.txt");
+  EvaluationByExecution evaluator = EvaluationByExecution(functionName + "_logs_best_exhustive_debug.txt");
 
   // Evaluate the root transformation
-  //std::string RootEvel = evaluator.evaluateTransformation(root);
-  //root->setEvaluation(RootEvel);
-  /*BeamSearch* searcher = new BeamSearch(3, &context, functionName);
+  /*std::string RootEvel = evaluator.evaluateTransformation(root);
+  root->setEvaluation(RootEvel);
+  BeamSearch* searcher = new BeamSearch(3, &context, functionName);
   Node * res = searcher->runSearchMethod(root);*/
 
   // Initialize an evaluator for transformation evaluations
   // EvaluationByExecution evaluator =  EvaluationByExecution(functionName+"_logs_best.txt");
+  SmallVector<mlir::linalg::LinalgOp, 4> linalgOps = getLinalgOps(module1.get());
 
-  //SmallVector<Node *, 2> ParaList = Parallelization::createParallelizationCandidates(root, &context);
-  
-  // Interlist.push_back(root);
-  //std::cout << "size = " << ParaList.size() << std::endl;
-  // Set children nodes for the root Node
-
-  //root->setChildrenNodes(ParaList);
+  // Tile and Fuse for tensors inputs (TODO: all tensor operands).
+  bool changed = false;
+  int stage = 0;
+  Node *bestEval;
+  bestEval = root;
 
   // Evaluate the root transformation
-  std::string RootEvel = evaluator.evaluateTransformation(root);
-  root->setEvaluation(RootEvel);
+  std::string RootEvel = evaluator.evaluateTransformation(bestEval);
+  bestEval->setEvaluation(RootEvel);
+  OptimizationEnum::Optimization optimization = OptimizationEnum::Parallelization;
 
-  // Loop through the children nodes of the root
-  /*for (auto ChildNode : ParaList)
+  SmallVector<Node *, 2> toExplore = func1(root, 0, linalgOps, &context, optimization);
+  root->setChildrenNodes(toExplore);
+  for (auto node : toExplore)
   {
-    std::string evel = evaluator.evaluateTransformation(ChildNode);
-    ChildNode->setEvaluation(evel);*/
-      
-    SmallVector<Node *, 2> list1 = Tiling::createTilingCandidates(root, &context);
-    
-    /*MLIRCodeIR *ToCloneCodeIr = (MLIRCodeIR *)ChildNode->getTransformedCodeIr();
-    MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)ToCloneCodeIr->cloneIr();
-    Node* ClonedNode = new Node (ClonedCode);        
+    std::string evel = evaluator.evaluateTransformation(node);
+    node->setEvaluation(evel);
 
-    std::vector<Transformation*> TransList= ChildNode->getTransformationList();
-    ClonedNode->setTransformationList(TransList);
-     list1.insert(list1.begin(), ClonedNode);*/
-
-    //list1.push_back(ClonedNode);
-    root->setChildrenNodes(list1);
-
-    // Loop through the children nodes of the current child node
-    for (auto node1 : list1)
+    if (std::stod(bestEval->getEvaluation()) > std::stod(evel))
     {
-      
-      std::string evel = evaluator.evaluateTransformation(node1);
-      node1->setEvaluation(evel);
+      bestEval = node;
+    }
+    std::unordered_set<int> encounteredStages;
 
-      /*MLIRCodeIR *ToCloneCodeIrInter = (MLIRCodeIR *)ChildNode->getTransformedCodeIr();
-      MLIRCodeIR* ClonedCodeInter =  (MLIRCodeIR*)ToCloneCodeIrInter->cloneIr();
-      Node* ClonedNodeInter = new Node (ClonedCodeInter);        
+    for (Transformation *transformation : node->getTransformationList())
+    {
+      std::string type = transformation->getType();
 
-      std::vector<Transformation*> TransList= ChildNode->getTransformationList();
-      ClonedNodeInter->setTransformationList(TransList);*/
-    
-      SmallVector<Node *, 2> list = Interchange::createInterchangeCandidates(node1, &context);
-     
-      node1->setChildrenNodes(list);
-
-      // Loop through the children nodes of the current node1
-      for (auto node2 : list)
+      if (type == "Tiling")
       {
-        std::string evel1 = evaluator.evaluateTransformation(node2);
-        node2->setEvaluation(evel1);
+        int stage = ((Tiling *)transformation)->getOperationStage();
+        // Check if the operation stage is within the valid range
+        if (stage >= 0 && stage <= linalgOps.size())
+        {
+          // Mark the stage as encountered
+          encounteredStages.insert(stage);
+        }
+      }
+      /*if (type == "Parallelization")
+      {
+        int stage = ((Parallelization *)transformation)->getOperationStage();
+        // Check if the operation stage is within the valid range
+        if (stage >= 0 && stage <= linalgOps.size())
+        {
+          // Mark the stage as encountered
+          encounteredStages.insert(stage);
+        }
+      }*/
+    }
 
-        SmallVector<Node *, 2> list_vect = Vectorization::createVectorizationCandidates(node2, &context);
-        node2->setChildrenNodes(list_vect);
-        
+    // Check if all required stages are covered
+    if (encounteredStages.size() == linalgOps.size())
+    {
+      std::cout << "VECTORIZING WITH ONLY ON TILING\n";
+      MLIRCodeIR *CodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
+      MLIRCodeIR *ClonedCode = (MLIRCodeIR *)CodeIr->cloneIr();
+      Node *ChildNode = new Node(ClonedCode);
+      std::vector<Transformation *> TransList = node->getTransformationList();
+      ChildNode->setTransformationList(TransList);
+
+      SmallVector<Node *, 2> list_vect1 = Vectorization::createVectorizationCandidates(ChildNode, &context);
+      ChildNode->setChildrenNodes(list_vect1);
+
+      for (auto node3 : list_vect1)
+      {
+        std::string evel3 = evaluator.evaluateTransformation(node3);
+        node3->setEvaluation(evel3);
+        if (std::stod(bestEval->getEvaluation()) > std::stod(evel3))
+        {
+          std::cout << "Changing nodes\n";
+          bestEval = node3;
+        }
+      }
+    }
+
+    OptimizationEnum::Optimization optimization2 = OptimizationEnum::Tiling;
+    SmallVector<Node *, 2> toExploreSecond = func1(node, 0, linalgOps, &context, optimization2);
+    node->setChildrenNodes(toExploreSecond);
+    for (auto node1 : toExploreSecond)
+    {
+      std::string evel1 = evaluator.evaluateTransformation(node1);
+      node1->setEvaluation(evel1);
+
+      if (std::stod(bestEval->getEvaluation()) > std::stod(evel1))
+      {
+        bestEval = node1;
+      }
+      std::unordered_set<int> encounteredStages1;
+
+      for (Transformation *transformation : node1->getTransformationList())
+      {
+        std::string type = transformation->getType();
+
+        if (type == "Tiling")
+        {
+          int stage = ((Tiling *)transformation)->getOperationStage();
+          // Check if the operation stage is within the valid range
+          if (stage >= 0 && stage <= linalgOps.size())
+          {
+            // Mark the stage as encountered
+            encounteredStages1.insert(stage);
+          }
+        }
+        /*if (type == "Parallelization")
+        {
+
+          int stage = ((Parallelization *)transformation)->getOperationStage();
+          // Check if the operation stage is within the valid range
+          if (stage >= 0 && stage <= linalgOps.size())
+          {
+            // Mark the stage as encountered
+            encounteredStages1.insert(stage);
+          }
+        }*/
+      }
+      if (encounteredStages1.size() == linalgOps.size())
+      {
+        std::cout << "WE VECTORIZING \n";
+        SmallVector<Node *, 2> list_vect = Vectorization::createVectorizationCandidates(node1, &context);
+        node1->setChildrenNodes(list_vect);
+
         for (auto node3 : list_vect)
         {
           std::string evel2 = evaluator.evaluateTransformation(node3);
           node3->setEvaluation(evel2);
+          if (std::stod(bestEval->getEvaluation()) > std::stod(evel2))
+          {
+            std::cout << "Changing nodes\n";
+            bestEval = node3;
+          }
         }
       }
     }
-  //}
+  }
+  /*for (mlir::linalg::LinalgOp linalgOp : linalgOps)
+  {
+    if ((linalgOp->getName().getStringRef()).str() != "linalg.fill")
+    {
+      std::cout << " OPERATION ;###############################\n";
+      linalgOp->dump();
+      SmallVector<Node *, 2> ParaList = Parallelization::createParallelizationCandidates(bestEval, &context, stage, linalgOps);
 
+      // Interlist.push_back(root);
+      std::cout << "size = " << ParaList.size() << std::endl;
+      // Set children nodes for the root Node
+      bestEval->setChildrenNodes(ParaList);
+      // Loop through the children nodes of the root
+      for (auto ChildNode : ParaList)
+      {
+        std::string evel = evaluator.evaluateTransformation(ChildNode);
+        ChildNode->setEvaluation(evel);
+
+        if (std::stod(bestEval->getEvaluation()) > std::stod(evel))
+        {
+
+          bestEval = ChildNode;
+        }
+        MLIRCodeIR *CodeIr = (MLIRCodeIR *)ChildNode->getTransformedCodeIr();
+
+        mlir::Operation *target = ((mlir::Operation *)(*CodeIr)
+                                       .getIr());
+        std::cout << " TILING ,###############################\n";
+        SmallVector<mlir::linalg::LinalgOp, 4> linalgOpsTiling = getLinalgOps(target);
+        int stage1 = linalgOpsTiling.size() - 1;
+        /*for (mlir::linalg::LinalgOp linalgOp : linalgOps)
+       {*/
+  // SmallVector<Node *, 2> list1 = Tiling::createTilingCandidates(ChildNode, &context, stage, linalgOpsTiling);
+
+  /*/*MLIRCodeIR *ToCloneCodeIr = (MLIRCodeIR *)ChildNode->getTransformedCodeIr();
+  MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)ToCloneCodeIr->cloneIr();
+  Node* ClonedNode = new Node (ClonedCode);
+
+  std::vector<Transformation*> TransList= ChildNode->getTransformationList();
+  ClonedNode->setTransformationList(TransList);
+   list1.insert(list1.begin(), ClonedNode);*/
+
+  // list1.push_back(ClonedNode);
+  /*ChildNode->setChildrenNodes(list1);*/
+
+  // Loop through the children nodes of the current child node
+  /*for (auto node1 : list1)
+  {
+
+    std::string evel = evaluator.evaluateTransformation(node1);
+    node1->setEvaluation(evel);
+
+    if (std::stod(bestEval->getEvaluation()) > std::stod(evel))
+    {
+      std::cout << "Changing nodes\n";
+      bestEval = node1;
+    }
+    /*MLIRCodeIR *ToCloneCodeIrInter = (MLIRCodeIR *)ChildNode->getTransformedCodeIr();
+    MLIRCodeIR* ClonedCodeInter =  (MLIRCodeIR*)ToCloneCodeIrInter->cloneIr();
+    Node* ClonedNodeInter = new Node (ClonedCodeInter);
+
+    std::vector<Transformation*> TransList= ChildNode->getTransformationList();
+    ClonedNodeInter->setTransformationList(TransList);*/
+
+  // SmallVector<Node *, 2> list = Interchange::createInterchangeCandidates(node1, &context);
+
+  // node1->setChildrenNodes(list);
+
+  // Loop through the children nodes of the current node1
+  /*for (auto node2 : list1)
+  {
+    std::string evel1 = evaluator.evaluateTransformation(node2);
+    node2->setEvaluation(evel1);
+  */
+
+  //}
+  /*}
+  stage1--;*/
+  /*}
+}
+}
+stage++;
+//}
+}
+SmallVector<Node *, 2> list_vect = Vectorization::createVectorizationCandidates(bestEval, &context);
+    bestEval->setChildrenNodes(list_vect);
+
+    for (auto node3 : list_vect)
+    {
+      std::string evel2 = evaluator.evaluateTransformation(node3);
+      node3->setEvaluation(evel2);
+       if (std::stod(bestEval->getEvaluation()) > std::stod(evel2))
+    {
+      std::cout << "Changing nodes\n";
+      bestEval = node3;
+    }
+    }*/
   // Prepare the output JSON string
   std::ostringstream outputStringStream;
   outputStringStream << "{ \"name\" : \"" + functionName + "\" , \"evaluations\": [\n";

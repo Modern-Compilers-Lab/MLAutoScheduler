@@ -1,11 +1,11 @@
 
-//===----------------------- TilingTransformation.h ----------------------===//
+//===----------------------- ParallelizationTransformation.h ----------------------===//
 //
 //===----------------------------------------------------------------------===//
 ///
 /// \file
-/// This file contains the declaration of the TilingTransformation class, which  
-/// contains the declartion of the tiling transformation
+/// This file contains the declaration of the ParallelizationTransformation class, which  
+/// contains the declartion of the Parallelization transformation
 ///
 //===----------------------------------------------------------------------===//
 
@@ -37,13 +37,14 @@
 class Parallelization: public Transformation{
     private:
         mlir::TilingInterface* op;
+        int OperationStage;
         mlir::MLIRContext *context;
         llvm::SmallVector<int64_t, 4> tileSizes;
     public:
         Parallelization();
 
         /// Constructor for Tiling that allows specifying the tile size.
-        Parallelization(mlir::TilingInterface* op, llvm::SmallVector<int64_t, 4> tileSizes, mlir::MLIRContext *context);
+        Parallelization(mlir::TilingInterface* op, int OperationStage, llvm::SmallVector<int64_t, 4> tileSizes, mlir::MLIRContext *context);
 
         /// Applies the tiling transformation to the given CodeIR object.
         /// Overrides the applyTransformation() method from the base class Transformation.
@@ -52,9 +53,13 @@ class Parallelization: public Transformation{
         std::string getType() override;
         /// Creates a list of tiling transformation candidates for the given CodeIR object.
         /// Overrides the createCandidates() method from the base class Transformation.
-        static SmallVector<Node* , 2>  createParallelizationCandidates(Node *node, mlir::MLIRContext *context);
+        static SmallVector<Node* , 2>  createParallelizationCandidates(Node *node, mlir::MLIRContext *context,
+                                                                        int CurrentStage,
+                                                                        SmallVector<mlir::linalg::LinalgOp, 4> LinalgOpStages);
 
         llvm::SmallVector<int64_t, 4>  getTileSizes();
+        int getOperationStage();
+        void setOperationStage(int stage);
 };
 
 #endif // MLSCEDULER_PARALLELIZATION_TRANSFORMATION_H_

@@ -3,6 +3,7 @@
 
 #include "llvm/ADT/SmallVector.h"
 #include "mlir/Dialect/Utils/StaticValueUtils.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
 
 #include <random>
 
@@ -37,13 +38,13 @@ llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4>
 generateTileForOpCombinationsForDecompostion(int64_t maxNumberLoops,
                                              const llvm::SmallVector<mlir::Range> &iterationDomain);
 
-
 std::vector<std::vector<unsigned>> generateCandidates(int64_t numLoops,
-        int64_t NbElement);
+                                                      int64_t NbElement);
 
 void generateCandidateHelper(std::vector<unsigned> &values,
                              std::vector<unsigned> &currentCandidate,
                              std::vector<std::vector<unsigned>> &candidates,
                              unsigned index);
 
+llvm::SmallVector<mlir::linalg::LinalgOp, 4> getLinalgOps(mlir::Operation *prog);
 #endif // MLSCHEDULER_UTILS_H_

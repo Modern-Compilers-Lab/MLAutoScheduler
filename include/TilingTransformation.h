@@ -28,6 +28,7 @@
 class Tiling: public Transformation{
     private:
         mlir::TilingInterface* op;
+        int OperationStage;
         mlir::scf::SCFTilingOptions options;
         mlir::MLIRContext *context;
         llvm::SmallVector<int64_t, 4> tileSizes;
@@ -35,7 +36,7 @@ class Tiling: public Transformation{
         Tiling();
 
         /// Constructor for Tiling that allows specifying the tile size.
-        Tiling(mlir::TilingInterface* op, mlir::scf::SCFTilingOptions &options, llvm::SmallVector<int64_t, 4> tileSizes, mlir::MLIRContext *context);
+        Tiling(mlir::TilingInterface* op, int OperationStage, mlir::scf::SCFTilingOptions &options, llvm::SmallVector<int64_t, 4> tileSizes, mlir::MLIRContext *context);
 
         /// Applies the tiling transformation to the given CodeIR object.
         /// Overrides the applyTransformation() method from the base class Transformation.
@@ -46,9 +47,13 @@ class Tiling: public Transformation{
         llvm::SmallVector<int64_t, 4> getTilingSizes();
         /// Creates a list of tiling transformation candidates for the given CodeIR object.
         /// Overrides the createCandidates() method from the base class Transformation.
-        static SmallVector<Node* , 2>  createTilingCandidates(Node *node, mlir::MLIRContext *context);
+        static SmallVector<Node* , 2>  createTilingCandidates(Node *node, mlir::MLIRContext *context,
+                                                                        int CurrentStage,
+                                                                        SmallVector<mlir::linalg::LinalgOp, 4> LinalgOpStages);
 
         mlir::scf::SCFTilingOptions getOptions();
+        int getOperationStage();
+        void setOperationStage(int stage);
 };
 
 #endif // MLSCEDULER_TILING_TRANSFORMATION_H_
