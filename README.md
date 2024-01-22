@@ -1,6 +1,8 @@
-# MLScheduler
+# MLAutoScheduler
 
+MLAutoScheduler is a tool designed specifically for optimizing machine learning workloads. It leverages MLIR transformations to achieve the best schedule for a given ML program.
 <!-- GETTING STARTED -->
+
 ## Getting Started
 
 This is an example of how you may give instructions on setting up your project locally.
@@ -31,7 +33,7 @@ To get a local copy up and running follow these simple example steps.
 
 2. Clone the repo
    ```sh
-   git clone https://github.com/nassimiheb/MLScheduler.git
+   git clone https://github.com/MLIR-Autoscheduler/MLAutoScheduler.git
    ```
 3. Build 
    ```sh
