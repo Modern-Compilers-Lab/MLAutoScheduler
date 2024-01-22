@@ -416,6 +416,7 @@ std::string getEvaluation(std::string inputCode)
             }
         } else {
             std::cout << "No GFLOPS found in the input string." << std::endl;
+            return "9000000000000000000";
         }
         std::cout<<evalString<<std::endl;
 
