@@ -1,6 +1,7 @@
 # MLAutoScheduler
 
-MLAutoScheduler is a tool designed specifically for optimizing machine learning workloads. It leverages MLIR transformations to achieve the best schedule for a given ML program.
+MLAutoScheduler is a tool designed specifically for optimizing machine learning workloads. It leverages MLIR transformations to achieve the best schedule for a given ML program. It uses the [coreAutoScheduler](https://github.com/MLIR-Autoscheduler/coreAutoScheduler) repo to implement the core functionalities of the autoscheduler.
+
 <!-- GETTING STARTED -->
 
 ## Getting Started
