@@ -1,0 +1,3 @@
+[submodule "coreAutoScheduler"]
+	path = coreAutoScheduler
+	url = https://github.com/MLIR-Autoscheduler/coreAutoScheduler.git
