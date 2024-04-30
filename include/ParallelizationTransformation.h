@@ -34,6 +34,13 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/Transforms/Passes.h"
 
+
+#include "mlir/IR/Dialect.h"
+#include "mlir/InitAllDialects.h"
+#include "mlir/InitAllPasses.h"
+
+
+
 class Parallelization: public Transformation{
     private:
         mlir::TilingInterface* op;

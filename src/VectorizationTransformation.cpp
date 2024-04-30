@@ -14,9 +14,18 @@ using namespace mlir;
 mlir::Operation *DecomposeConv2dOp(mlir::Operation *Target)
 {
 
-  std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n   %conv = transform.structured.match ops{[\"linalg.conv_2d_nhwc_hwcf\"]} in %variant_op : (!transform.any_op) -> !transform.any_op %decomposed = transform.structured.decompose %conv: (!transform.any_op) -> !transform.any_op }";
+  // TODO: TYPE OF CONV
+  std::string transformDialectString = "module attributes {transform.with_named_sequence} { \n transform.named_sequence @__transform_main(%variant_op: !transform.any_op {transform.readonly})  { \n   %conv = transform.structured.match ops{[\"linalg.conv_2d_nhwc_hwcf\"]} in %variant_op : (!transform.any_op) -> !transform.any_op %decomposed = transform.structured.decompose %conv: (!transform.any_op) -> !transform.any_op %pool = transform.structured.match ops{[\"linalg.pooling_nchw_max\"]} in %variant_op : (!transform.any_op) -> !transform.any_op %decomposed_pool = transform.structured.decompose %pool: (!transform.any_op) -> !transform.any_op transform.yield}}";
+  mlir::transform::TransformOptions options1;
+  mlir::OwningOpRef<mlir::ModuleOp> moduleFromFile = parseSourceString<mlir::ModuleOp>(transformDialectString, Target->getContext());
+  llvm::StringRef entryPoint = "__transform_main";
+  mlir::Operation *transformEntryPoint = transform::detail::findTransformEntryPoint(Target, *moduleFromFile, entryPoint);
 
-  mlir::PassManager pm((Target)->getName());
+  transform::applyTransformNamedSequence(
+      Target, transformEntryPoint, *moduleFromFile,
+      options1.enableExpensiveChecks(false));
+  return Target;
+  /*mlir::PassManager pm((Target)->getName());
 
   // Apply any generic pass manager command line options and run the pipeline.
   applyPassManagerCLOptions(pm);
@@ -25,7 +34,7 @@ mlir::Operation *DecomposeConv2dOp(mlir::Operation *Target)
   if (!mlir::failed(pm.run((Target))))
   {
     return Target;
-  }
+  }*/
 }
 
 Vectorization::Vectorization(mlir::linalg::LinalgOp *op,
@@ -97,7 +106,7 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
   SmallVector<Node *, 2> ChildNodes;
 
   MLIRCodeIR *ClonedCode = (MLIRCodeIR *)CodeIr->cloneIr();
-  Node *ChildNode = new Node(ClonedCode);
+  Node *ChildNode = new Node(ClonedCode, node->getCurrentStage());
 
   std::vector<Transformation *> TransList = node->getTransformationList();
   ChildNode->setTransformationList(TransList);
@@ -125,32 +134,109 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
     mlir::Operation *ClonedTarget = ((mlir::Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
                                          .getIr());
 
-    SmallVector<mlir::linalg::LinalgOp, 4> linalgOps = getLinalgOps(ClonedTarget);
+    // SmallVector<mlir::linalg::LinalgOp, 4> linalgOps = getLinalgOps(ClonedTarget);
 
     std::vector<Transformation *> transformations = node->getTransformationList();
 
     bool TilingDone = false;
-    llvm::SmallVector<int64_t, 4> tilingSizes;
-    for (Transformation *transform : transformations)
+
+    ClonedTarget->walk([&](mlir::Operation *op)
+                       {
+      if (mlir::TilingInterface ClonedTileableOp = dyn_cast<mlir::TilingInterface>(op))
+      {
+        //if ((op->getName().getStringRef()).str() == "linalg.pooling_nchw_max" || (op->getName().getStringRef()).str() == "linalg.conv_2d_nchw_fchw")
+        if ((op->getName().getStringRef()).str() == "linalg.pooling_nchw_max" || (op->getName().getStringRef()).str() == "linalg.conv_2d_nhwc_hwcf")
+        {
+          llvm::SmallVector<int64_t, 4> tilingSizes;
+          OpBuilder builder(context);
+          SmallVector<Range> iterationDomain = ClonedTileableOp.getIterationDomain(builder);
+          for (size_t i = 0; i < iterationDomain.size(); ++i)
+          {
+            //if (i == 2)
+            if (i == 1)
+            {
+              tilingSizes.push_back(1); // DEPENDS on the 'h' and the type of the conv2D
+            }
+            else if ((op->getName().getStringRef()).str() == "linalg.pooling_nchw_max" && i == 4)
+            {
+              tilingSizes.push_back(1); // DEPENDS on the 'h' and the type of the pooling
+              break;
+            }
+            //else if ((op->getName().getStringRef()).str() == "linalg.conv_2d_nchw_fchw" && i == 5) 
+            else if ((op->getName().getStringRef()).str() == "linalg.conv_2d_nhwc_hwcf" && i == 4)
+            {
+              tilingSizes.push_back(1); // DEPENDS on the 'h' and the type of the conv2D
+              break;
+            }
+            else
+            {
+              tilingSizes.push_back(0);
+            }
+          }
+          scf::SCFTilingOptions options;
+
+          SmallVector<OpFoldResult> mixedSizes = getMixedSizes(tilingSizes, context);
+          options.setTileSizes(mixedSizes);
+          std::cout << "Modified tilingSizes " << (op->getName().getStringRef()).str() << " : [";
+          for (size_t i = 0; i < tilingSizes.size(); ++i)
+          {
+            std::cout << tilingSizes[i];
+            if (i < tilingSizes.size() - 1)
+            {
+              std::cout << ", ";
+            }
+          }
+          std::cout << "]\n";
+
+          std::cout << "TRYING TO TILE CONV2D\n";
+
+          ToDecompose = true;
+          
+          Tiling *tiling =
+              new Tiling(&ClonedTileableOp,
+                        node->getCurrentStage(),
+                        options,
+                        tilingSizes,
+                        context);
+
+          node->setTransformation(tiling);
+
+          node->addTransformation(tiling);
+
+          IRRewriter rewriter(context);
+
+          FailureOr<scf::SCFTilingResult> maybeTiled =
+              scf::tileUsingSCFForOp(rewriter, ClonedTileableOp, options);
+          std::cout << "END OF TILE CONV2D\n";
+
+          if (!failed(maybeTiled))
+            rewriter.replaceOp(ClonedTileableOp, maybeTiled->loops.front()->getResults());
+        }
+      } });
+    /*for (Transformation *transform : transformations)
     {
       // Check if the dynamic cast to Tiling is successful
-      if (transform->getType() == "Tiling")
+      if (transform->getType() == "Parallelization")
       {
         TilingDone = true;
         // Found a Tiling transformation
-        Tiling *tiling = (Tiling *)transform;
+        Parallelization *tiling = (Parallelization *)transform;
         int stage = tiling->getOperationStage();
-        tilingSizes = tiling->getTilingSizes();
+        tilingSizes = tiling->getTileSizes();
         mlir::Operation *linalgOp = linalgOps[stage];
         for (size_t i = 0; i < tilingSizes.size(); ++i)
         {
-          if (i == 1)
+          if (i == 2)
           {
-            tilingSizes[i] = 1;
+            tilingSizes[i] = 1; // DEPENDS on the 'h' and the type of the conv2D
           }
-          else if (i == 4)
+          else if ((linalgOp->getName().getStringRef()).str() == "linalg.pooling_nchw_max" && i == 4)
           {
-            tilingSizes[i] = 1;
+            tilingSizes[i] = 1; // DEPENDS on the 'h' and the type of the pooling
+          }
+          else if ((linalgOp->getName().getStringRef()).str() == "linalg.conv_2d_nchw_fchw" && i == 6)
+          {
+            tilingSizes[i] = 1; // DEPENDS on the 'h' and the type of the conv2D
           }
         }
         scf::SCFTilingOptions options;
@@ -170,13 +256,16 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
         {
           if ((linalgOp->getName().getStringRef()).str() != "linalg.fill" && TilingDone)
           {
-            if ((linalgOp->getName().getStringRef()).str() == "linalg.conv_2d_nhwc_hwcf")
+            if ((linalgOp->getName().getStringRef()).str() == "linalg.conv_2d_nchw_fchw" || (linalgOp->getName().getStringRef()).str() == "linalg.pooling_nchw_max") // TO DO : TYPE OF THE CONV2D
             {
+              std::cout << "TRYING TO TILE CONV2D\n";
+
               ToDecompose = true;
               IRRewriter rewriter(context);
 
               FailureOr<scf::SCFTilingResult> maybeTiled =
                   scf::tileUsingSCFForOp(rewriter, ClonedTileableOp, options);
+              std::cout << "END OF TILE CONV2D\n";
 
               if (!failed(maybeTiled))
                 rewriter.replaceOp(ClonedTileableOp, maybeTiled->loops.front()->getResults());
@@ -184,7 +273,7 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
           }
         }
       }
-     }
+    }*/
 
     /*ClonedTarget->walk([&](mlir::Operation *op)
                        {
@@ -206,12 +295,16 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
               }});*/
 
     // int ClonedOpIndex = 0;
+    // ClonedTarget->dump();
     //  Conv2d Decomposition
     if (ToDecompose)
     {
+      std::cout << "START DECOMPOSE\n";
       mlir::Operation *DecomposedTarget = DecomposeConv2dOp(ClonedTarget);
       MLIRCodeIR *DecomposedCodeIr = (MLIRCodeIR *)CodeIr->setMLIRIR(DecomposedTarget);
       node->setTransformedCodeIr(DecomposedCodeIr);
+      std::cout << "END DECOMPOSE\n";
+      DecomposedTarget->dump();
     }
 
     // End Conv2d Decomposition
@@ -221,8 +314,22 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
     Vectorization *vectorization = (Vectorization *)node->getTransformation();
 
     // auto start = std::chrono::high_resolution_clock::now();
-    std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n   %func = transform.structured.match ops{[\"func.func\"]} in %variant_op: (!transform.any_op) -> !transform.any_op \n %func_0 = transform.structured.vectorize %func {vectorize_padding}: (!transform.any_op) -> (!transform.any_op) \n %func_01 = transform.structured.hoist_redundant_vector_transfers %func_0 :(!transform.any_op) -> (!transform.any_op) \n transform.structured.hoist_redundant_tensor_subsets %func_01 :(!transform.any_op) -> () }";
+    std::string transformDialectString = "module attributes {transform.with_named_sequence} { \n transform.named_sequence @__transform_main(%variant_op: !transform.any_op {transform.readonly})  { \n   %func = transform.structured.match ops{[\"func.func\"]} in %variant_op: (!transform.any_op) -> !transform.any_op \n  %func_0 = transform.structured.vectorize_children_and_apply_patterns %func {vectorize_padding}: (!transform.any_op) -> (!transform.any_op) \n %func_01 = transform.structured.hoist_redundant_vector_transfers %func_0 :(!transform.any_op) -> (!transform.any_op) \n transform.yield}}";
+    std::cout << "START VECT\n";
 
+    mlir::transform::TransformOptions options1;
+    mlir::OwningOpRef<mlir::ModuleOp> moduleFromFile = parseSourceString<mlir::ModuleOp>(transformDialectString, Target->getContext());
+    llvm::StringRef entryPoint = "__transform_main";
+    mlir::Operation *transformEntryPoint = transform::detail::findTransformEntryPoint(Target, *moduleFromFile, entryPoint);
+
+    transform::applyTransformNamedSequence(
+        Target, transformEntryPoint, *moduleFromFile,
+        options1.enableExpensiveChecks(false));
+
+    MLIRCodeIR *ClonedCodeIr = (MLIRCodeIR *)CodeIr->setMLIRIR(Target);
+    node->setTransformedCodeIr(ClonedCodeIr);
+    /*
+    //## OLD transform dilect interprter pass
     mlir::PassManager pm((Target)->getName());
 
     // Apply any generic pass manager command line options and run the pipeline.
@@ -233,8 +340,9 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
     {
       MLIRCodeIR *ClonedCodeIr = (MLIRCodeIR *)CodeIr->setMLIRIR(Target);
       node->setTransformedCodeIr(ClonedCodeIr);
-    }
-
+    }*/
+    // Target->dump();
+    std::cout << "END VECT\n";
     /*auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << "Time taken by vectorization: " << duration.count() << " microseconds" << std::endl;*/

@@ -62,7 +62,7 @@ get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 # Add the include directories
 include_directories(include)
 include_directories(include/CustomPasses)
-include_directories(autoSchedulerInfrastructure/include)
+include_directories(coreAutoScheduler/include)
 
 add_subdirectory(include)
 # # Add the source files
@@ -83,8 +83,8 @@ CustomPassesIncGen
 llvm_update_compile_flags(AutoSchedulerML)
 
 # Link the library
-add_subdirectory(./autoSchedulerInfrastructure build)
-target_link_libraries(AutoSchedulerML PUBLIC autoSchedulerInfrastructure)
+add_subdirectory(./coreAutoScheduler build)
+target_link_libraries(AutoSchedulerML PUBLIC coreAutoScheduler)
 target_link_libraries(AutoSchedulerML
 PRIVATE
   ${dialect_libs}
@@ -117,6 +117,15 @@ PRIVATE
 
   MLIRAnalysis
   MLIRSupport
+  
+  MLIRFunctionInterfaces
+  MLIRTransformDialect
+  MLIRTransforms
+  MLIRTransformDialectUtils
+  MLIRTransformDialectTransforms
+
+
+
 
   )
   #add_subdirectory(src)

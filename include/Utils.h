@@ -5,6 +5,15 @@
 #include "mlir/Dialect/Utils/StaticValueUtils.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 
+#include "mlir/Dialect/Transform/Transforms/TransformInterpreterUtils.h"
+#include "mlir/Dialect/Linalg/Transforms/Transforms.h"
+#include "mlir/Parser/Parser.h"
+
+#include <iostream>
+#include <regex>
+#include <string>
+#include <vector>
+#include <set>
 #include <random>
 
 void generateCombinations(const llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4> &tileSizes,
@@ -47,4 +56,11 @@ void generateCandidateHelper(std::vector<unsigned> &values,
                              unsigned index);
 
 llvm::SmallVector<mlir::linalg::LinalgOp, 4> getLinalgOps(mlir::Operation *prog);
+std::pair<std::vector<std::string>, std::vector<std::string>> remove_duplicate_args(std::vector<std::string> args, std::vector<std::string> shapes);
+std::string function_wrapper(const std::string &operation, const std::string &maps = "");
+
+llvm::SmallVector<mlir::OpFoldResult> getMixedSizes(llvm::ArrayRef<int64_t> tileSizes, mlir::MLIRContext *context);
+
+mlir::LogicalResult TagSCFForAll(mlir::Operation *Target, std::string tag);
+mlir::LogicalResult TagOperation(mlir::Operation *Target, std::string tag);
 #endif // MLSCHEDULER_UTILS_H_

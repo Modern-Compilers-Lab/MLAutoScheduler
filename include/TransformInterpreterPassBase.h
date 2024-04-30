@@ -14,7 +14,10 @@
 #define MLSCEDULER_TRANSFORM_TRANSFORM_INTERPRETER_PASSBASE_H
 
 #include "mlir/Dialect/Transform/IR/TransformInterfaces.h"
+#include "mlir/InitAllDialects.h"
 #include "mlir/Pass/Pass.h"
+#include "mlir/Dialect/Transform/Transforms/TransformInterpreterUtils.h"
+#include "mlir/Dialect/Transform/IR/Utils.h"
 #include "mlir/Support/LLVM.h"
 #include <memory>
 using namespace mlir;
@@ -27,45 +30,45 @@ template <typename>
 class OwningOpRef;
 class Region;
 
-
 /// Template-free implementation of TransformInterpreterPassBase::initialize.
 mlir::LogicalResult interpreterBaseInitializeImpl(
-    mlir::MLIRContext *context, llvm::StringRef transformFileName,
-    llvm::StringRef transformLibraryFileName,
-    std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &module,
-    std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &libraryModule,
+    mlir::MLIRContext *context, StringRef transformFileName,
+    ArrayRef<std::string> transformLibraryPaths,
+    std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &sharedTransformModule,
+    std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &transformLibraryModule,
     function_ref<std::optional<mlir::LogicalResult>(mlir::OpBuilder &, mlir::Location)>
-        moduleBuilder = nullptr);
+        moduleBuilder);
 mlir::LogicalResult interpreterBaseInitializeImplModified(
-    mlir::MLIRContext *context, llvm::StringRef transformFileName,
-    llvm::StringRef transformLibraryFileName,
-    std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &module,
-    std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &libraryModule
-);
+    mlir::MLIRContext *context, StringRef transformFileName,
+    ArrayRef<std::string> transformLibraryPaths,
+    std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &sharedTransformModule,
+    std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &transformLibraryModule,
+    function_ref<std::optional<mlir::LogicalResult>(mlir::OpBuilder &, mlir::Location)>
+        moduleBuilder);
 /// Template-free implementation of
 /// TransformInterpreterPassBase::runOnOperation.
 mlir::LogicalResult interpreterBaseRunOnOperationImpl(
-    mlir::Operation *target, llvm::StringRef passName,
+    mlir::Operation *target, StringRef passName,
     const std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &sharedTransformModule,
-    const std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &libraryModule,
-    const RaggedArray<mlir::transform::MappedValue> &extraMappings,
+    const std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &transformLibraryModule,
+    const RaggedArray<transform::MappedValue> &extraMappings,
     const mlir::transform::TransformOptions &options,
-    const mlir::Pass::Option<std::string> &transformFileName,
-    const mlir::Pass::Option<std::string> &transformLibraryFileName,
-    const mlir::Pass::Option<std::string> &debugPayloadRootTag,
-    const mlir::Pass::Option<std::string> &debugTransformRootTag,
+    const Pass::Option<std::string> &transformFileName,
+    const Pass::ListOption<std::string> &transformLibraryPaths,
+    const Pass::Option<std::string> &debugPayloadRootTag,
+    const Pass::Option<std::string> &debugTransformRootTag,
     StringRef binaryName);
 mlir::LogicalResult interpreterBaseRunOnOperationImplModified(
-    mlir::Operation *target, llvm::StringRef passName,
+   mlir::Operation *target, StringRef passName,
     const std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &sharedTransformModule,
-    const std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &libraryModule,
-    const RaggedArray<mlir::transform::MappedValue> &extraMappings,
+    const std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &transformLibraryModule,
+    const RaggedArray<transform::MappedValue> &extraMappings,
     const mlir::transform::TransformOptions &options,
-    const mlir::Pass::Option<std::string> &transformFileName,
-    const mlir::Pass::Option<std::string> &transformLibraryFileName,
-    const mlir::Pass::Option<std::string> &debugPayloadRootTag,
-    const mlir::Pass::Option<std::string> &debugTransformRootTag,
-    llvm::StringRef binaryName);// namespace detail
+    const Pass::Option<std::string> &transformFileName,
+    const Pass::ListOption<std::string> &transformLibraryPaths,
+    const Pass::Option<std::string> &debugPayloadRootTag,
+    const Pass::Option<std::string> &debugTransformRootTag,
+    StringRef binaryName); // namespace detail
 
 /// Base class for transform dialect interpreter passes that can consume and
 /// dump transform dialect scripts in separate files. The pass is controlled by
@@ -103,43 +106,57 @@ mlir::LogicalResult interpreterBaseRunOnOperationImplModified(
 /// Concrete passes may implement the `runBeforeInterpreter` and
 /// `runAfterInterpreter` to customize the behavior of the pass.
 template <typename Concrete, template <typename> typename GeneratedBase>
-class TransformInterpreterPassBaseModified : public GeneratedBase<Concrete> {
+class TransformInterpreterPassBaseModified : public GeneratedBase<Concrete>
+{
 public:
   explicit TransformInterpreterPassBaseModified(
       const mlir::transform::TransformOptions &options = mlir::transform::TransformOptions())
       : options(options) {}
 
-  TransformInterpreterPassBaseModified(const TransformInterpreterPassBaseModified &pass) {
+  TransformInterpreterPassBaseModified(const TransformInterpreterPassBaseModified &pass)
+  {
     sharedTransformModule = pass.sharedTransformModule;
     options = pass.options;
   }
 
   static llvm::StringLiteral getBinaryName() { return "mlir-opt"; }
 
-  mlir::LogicalResult initialize(mlir::MLIRContext *context) override {
+  mlir::LogicalResult initialize(mlir::MLIRContext *context) override
+  {
 
-#define REQUIRE_PASS_OPTION(NAME)                                              \
-  static_assert(                                                               \
-      std::is_same_v<                                                          \
-          std::remove_reference_t<decltype(std::declval<Concrete &>().NAME)>,  \
-          mlir::Pass::Option<std::string>>,                                          \
+#define REQUIRE_PASS_OPTION(NAME)                                             \
+  static_assert(                                                              \
+      std::is_same_v<                                                         \
+          std::remove_reference_t<decltype(std::declval<Concrete &>().NAME)>, \
+          Pass::Option<std::string>>,                                         \
       "required " #NAME " string pass option is missing")
 
     REQUIRE_PASS_OPTION(transformFileName);
     REQUIRE_PASS_OPTION(debugPayloadRootTag);
     REQUIRE_PASS_OPTION(debugTransformRootTag);
-    REQUIRE_PASS_OPTION(transformLibraryFileName);
 
 #undef REQUIRE_PASS_OPTION
 
-    llvm::StringRef transformFileName =
+#define REQUIRE_PASS_LIST_OPTION(NAME)                                        \
+  static_assert(                                                              \
+      std::is_same_v<                                                         \
+          std::remove_reference_t<decltype(std::declval<Concrete &>().NAME)>, \
+          Pass::ListOption<std::string>>,                                     \
+      "required " #NAME " string pass option is missing")
+
+    REQUIRE_PASS_LIST_OPTION(transformLibraryPaths);
+
+#undef REQUIRE_PASS_LIST_OPTION
+
+    StringRef transformFileName =
         static_cast<Concrete *>(this)->transformFileName;
-    llvm::StringRef transformLibraryFileName =
-        static_cast<Concrete *>(this)->transformLibraryFileName;
+    ArrayRef<std::string> transformLibraryPaths =
+        static_cast<Concrete *>(this)->transformLibraryPaths;
     return interpreterBaseInitializeImpl(
-        context, transformFileName, transformLibraryFileName,
+        context, transformFileName, transformLibraryPaths,
         sharedTransformModule, transformLibraryModule,
-        [this](mlir::OpBuilder &builder, mlir::Location loc) {
+        [this](mlir::OpBuilder &builder, mlir::Location loc)
+        {
           return static_cast<Concrete *>(this)->constructTransformModule(
               builder, loc);
         });
@@ -148,33 +165,36 @@ public:
   /// Hook for passes to run additional logic in the pass before the
   /// interpreter. If failure is returned, the pass fails and the interpreter is
   /// not run.
-  mlir::LogicalResult runBeforeInterpreter(mlir::Operation *) { return mlir::success(); }
+  mlir::LogicalResult runBeforeInterpreter(mlir::Operation *) { return success(); }
 
   /// Hook for passes to run additional logic in the pass after the interpreter.
   /// Only runs if everything succeeded before. If failure is returned, the pass
   /// fails.
-  mlir::LogicalResult runAfterInterpreter(mlir::Operation *) { return mlir::success(); }
+  mlir::LogicalResult runAfterInterpreter(mlir::Operation *) { return success(); }
 
   /// Hook for passes to run custom logic to construct the transform module.
   /// This will run during initialization. If the external script is provided,
   /// it overrides the construction, which will not be called.
   std::optional<mlir::LogicalResult> constructTransformModule(mlir::OpBuilder &builder,
-                                                        mlir::Location loc) {
+                                                              mlir::Location loc)
+  {
     return std::nullopt;
   }
 
-  void runOnOperation() override {
+  void runOnOperation() override
+  {
     auto *pass = static_cast<Concrete *>(this);
     mlir::Operation *op = pass->getOperation();
-    llvm::StringRef binaryName = Concrete::getBinaryName();
+    StringRef binaryName = Concrete::getBinaryName();
     if (failed(pass->runBeforeInterpreter(op)) ||
         failed(interpreterBaseRunOnOperationImpl(
             op, pass->getArgument(), sharedTransformModule,
             transformLibraryModule,
             /*extraMappings=*/{}, options, pass->transformFileName,
-            pass->transformLibraryFileName, pass->debugPayloadRootTag,
+            pass->transformLibraryPaths, pass->debugPayloadRootTag,
             pass->debugTransformRootTag, binaryName)) ||
-        failed(pass->runAfterInterpreter(op))) {
+        failed(pass->runAfterInterpreter(op)))
+    {
       return pass->signalPassFailure();
     }
   }
@@ -185,17 +205,17 @@ protected:
 
   /// Returns a read-only reference to shared transform module.
   const std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &
-  getSharedTransformModule() const {
+  getSharedTransformModule() const
+  {
     return sharedTransformModule;
   }
 
   /// Returns a read-only reference to the transform library module.
   const std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> &
-  getTransformLibraryModule() const {
+  getTransformLibraryModule() const
+  {
     return transformLibraryModule;
   }
-
-
   /// The separate transform module to be used for transformations, shared
   /// across multiple instances of the pass if it is applied in parallel to
   /// avoid potentially expensive cloning. MUST NOT be modified after the pass
@@ -208,7 +228,7 @@ protected:
   /// modified after the pass has been initialized.
   std::shared_ptr<mlir::OwningOpRef<mlir::ModuleOp>> transformLibraryModule = nullptr;
 
-  private:
+private:
 };
 
 #endif // MLSCEDULER_TRANSFORM_TRANSFORM_INTERPRETER_PASSBASE_H

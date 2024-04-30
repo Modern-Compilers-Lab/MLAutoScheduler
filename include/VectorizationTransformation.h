@@ -16,6 +16,7 @@
 #include "MLIRCodeIR.h"
 #include "Node.h"
 #include "TilingTransformation.h"
+#include "ParallelizationTransformation.h"
 #include "TransformDialectInterpreter.h"
 #include "TransformInterpreterPassBase.h"
 #include "Utils.h"

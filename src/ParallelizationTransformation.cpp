@@ -22,6 +22,19 @@ using namespace mlir;
 SmallVector<SmallVector<int64_t, 4>, 4>
 generateTileForAllOpCombinations(int64_t maxNumberLoops,
                                  const std::vector<int64_t> &possibleTileSizes);*/
+static LogicalResult FuseIntoContainingOperation(mlir::Operation *Target, std::string producerTag, std::string consumerTag)
+{
+
+  std::string transformDialectString = "module attributes {transform.with_named_sequence} { \n transform.named_sequence @__transform_main(%variant_op: !transform.any_op {transform.readonly})  { \n  %0 = transform.structured.match attributes{\"" + producerTag + "\"} in %variant_op : (!transform.any_op) -> !transform.any_op \n %1 = transform.structured.match attributes{\"" + consumerTag + "\"} in %variant_op : (!transform.any_op) -> !transform.any_op \n transform.structured.fuse_into_containing_op %0 into %1 : (!transform.any_op, !transform.any_op) -> (!transform.any_op, !transform.any_op) \n transform.yield}}";
+  mlir::transform::TransformOptions options1;
+  mlir::OwningOpRef<mlir::ModuleOp> moduleFromFile = parseSourceString<mlir::ModuleOp>(transformDialectString, Target->getContext());
+  llvm::StringRef entryPoint = "__transform_main";
+  mlir::Operation *transformEntryPoint = transform::detail::findTransformEntryPoint(Target, *moduleFromFile, entryPoint);
+
+  return transform::applyTransformNamedSequence(
+      Target, transformEntryPoint, *moduleFromFile,
+      options1.enableExpensiveChecks(false));
+}
 static LogicalResult fuseLinalgOpsGreedily(Operation *f)
 {
   OpBuilder b(f);
@@ -86,11 +99,45 @@ static LogicalResult fuseLinalgOpsGreedily(Operation *f)
 
   return changed ? success() : failure();
 }
-DiagnosedSilenceableFailure FuseIntoContainingOperation(Operation *containingOp, Operation *target, IRRewriter &rewriter)
+DiagnosedSilenceableFailure FuseOps(Operation *f, SmallVector<mlir::Operation *, 2> producers, std::string tag, int CurrentStage)
 {
+  // SmallVector<Operation *> fusedOps;
+  // OpBuilder b(containingOp);
+  mlir::Operation *producerOp = producers[CurrentStage];
+  std::string producerTag = tag + "_producer_" + std::to_string(CurrentStage);
 
-  SmallVector<Operation *> fusedOps;
-  OpBuilder b(containingOp);
+  TagOperation(producerOp, producerTag);
+  FuseIntoContainingOperation(f, producerTag, tag);
+
+  CurrentStage++;
+  mlir::PassManager pm((f)->getName());
+
+  // Apply any generic pass manager command line options and run the pipeline.
+  applyPassManagerCLOptions(pm);
+
+  pm.addPass(mlir::createLoopInvariantCodeMotionPass());
+  pm.addPass(mlir::createCSEPass());
+  pm.addPass(mlir::createCanonicalizerPass());
+  pm.addPass(mlir::createCSEPass());
+
+  pm.addPass(mlir::bufferization::createEmptyTensorEliminationPass());
+  pm.addPass(mlir::bufferization::createEmptyTensorToAllocTensorPass());
+
+  if (!mlir::failed(pm.run((f))))
+    int ClonedOpIndex = 0;
+  SmallVector<mlir::Operation *, 2> NewProducers;
+  f->walk([&](mlir::Operation *op)
+          {
+                 if (auto linalgOp = dyn_cast<linalg::LinalgOp>(op))
+                  {
+                    NewProducers.push_back(op);
+                  } });
+  std::reverse(NewProducers.begin(), NewProducers.end());
+
+  if (NewProducers.size() > 0 && CurrentStage < NewProducers.size())
+  {
+    FuseOps(f, NewProducers, tag, CurrentStage);
+  }
   // auto producerOps = state.getPayloadOps(getProducerOp());
   // auto containingOps = state.getPayloadOps(getContainingOp());
 
@@ -203,42 +250,35 @@ linalgOps.push_back(producerOp);
 }
 }
 }*/
-  target->walk([&](Operation *producerOp)
-               {
-    // TEMP: Check if the operation is a "linalg.fill" operation
-    //if ((producerOp->getName().getStringRef()).str() == "linalg.fill")
-    //{
-        Diagnostic diag(producerOp->getLoc(),DiagnosticSeverity::Remark);
-        diag << "could not fuse " << *producerOp << " into " << *containingOp;
-        auto [tiledOps, newContainingOp] =
-        tileAndFuseFirstExtractUse(rewriter, diag, producerOp, containingOp);
-        
-        if (!tiledOps.empty()) {
-          fusedOps.append(tiledOps);
-          if (newContainingOp) {
-            rewriter.eraseOp(containingOp);
-            containingOp = newContainingOp;
-          }
-        }else{
-            SmallVector<Operation *> tiledContainingOpOperand =
-            tileAndFuseFirstExtractUseThroughContainingOpBlockArgument(
-            rewriter, diag, producerOp, containingOp);
-            if (!tiledContainingOpOperand.empty()) {
-              fusedOps.append(tiledContainingOpOperand);
-            }else{
-              /*Operation *cloned =
-                cloneAndFuseFirstUse(rewriter, diag, producerOp, containingOp);
-                 cloned->dump();
-                if (cloned) {
-                
-                  fusedOps.push_back(cloned);
-                  //continue;
-                }*/
+  /* target->walk([&](Operation *producerOp)
+                {
+     // TEMP: Check if the operation is a "linalg.fill" operation
+     //if ((producerOp->getName().getStringRef()).str() == "linalg.fill")
+     //{
+         Diagnostic diag(producerOp->getLoc(),DiagnosticSeverity::Remark);
+         diag << "could not fuse " << *producerOp << " into " << *containingOp;
+         auto [tiledOps, newContainingOp] =
+         tileAndFuseFirstExtractUse(rewriter, diag, producerOp, containingOp);
+
+         if (!tiledOps.empty()) {
+           fusedOps.append(tiledOps);
+           if (newContainingOp) {
+             rewriter.eraseOp(containingOp);
+             containingOp = newContainingOp;
            }
-        }
- 
-    //} 
-    });
+         }else{
+             SmallVector<Operation *> tiledContainingOpOperand =
+             tileAndFuseFirstExtractUseThroughContainingOpBlockArgument(
+             rewriter, diag, producerOp, containingOp);
+             if (!tiledContainingOpOperand.empty()) {
+               fusedOps.append(tiledContainingOpOperand);
+             }else{
+
+            }
+         }
+
+     //}
+     });*/
   return DiagnosedSilenceableFailure::success();
 }
 
@@ -253,10 +293,12 @@ Parallelization::Parallelization(mlir::TilingInterface *op,
   this->tileSizes = tileSizes;
 }
 
-int Parallelization::getOperationStage(){
+int Parallelization::getOperationStage()
+{
   return this->OperationStage;
 }
-void Parallelization::setOperationStage(int stage){
+void Parallelization::setOperationStage(int stage)
+{
   this->OperationStage = stage;
 }
 
@@ -344,7 +386,7 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
     for (int64_t value : upperBounds)
     {
       llvm::SmallVector<int64_t, 4> dividers;
-      for (int64_t i = 2; i < value; ++i)
+      for (int64_t i = 2; i < std::min(value, 100); ++i)
       {
         if (value % i == 0)
         {
@@ -353,7 +395,7 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
       }
       possibleTileSizes.push_back(dividers);
     }
-    for (size_t NumberLoops = 2; NumberLoops <= iterationDomain.size()-1 ; ++NumberLoops)
+    for (size_t NumberLoops = 2; NumberLoops <= iterationDomain.size() - 1; ++NumberLoops)
     {
       SmallVector<SmallVector<int64_t, 4>, 4> newCombinations =
           generateTileForAllOpCombinations(NumberLoops, possibleTileSizes, upperBounds);
@@ -361,19 +403,18 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
     }
 
     SmallVector<SmallVector<int64_t, 4>, 4> SelectedTileCombinations;
-    //SelectedTileCombinations.push_back({2, 200});
-    std::sample(
+    // SelectedTileCombinations.push_back({2, 200});
+    /*std::sample(
         tileCombinations.begin(),
         tileCombinations.end(),
         std::back_inserter(SelectedTileCombinations),
         1,
-        std::mt19937{std::random_device{}()}
-    );
-    for (const auto &candidate : SelectedTileCombinations)
+        std::mt19937{std::random_device{}()});*/
+    for (const auto &candidate : tileCombinations)
     {
 
       MLIRCodeIR *ClonedCode = (MLIRCodeIR *)CodeIr->cloneIr();
-      Node *ChildNode = new Node(ClonedCode);
+      Node *ChildNode = new Node(ClonedCode, node->getCurrentStage());
 
       std::vector<Transformation *> TransList = node->getTransformationList();
       ChildNode->setTransformationList(TransList);
@@ -411,6 +452,18 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
     if (mlir::TilingInterface ClonedTileableOp = dyn_cast<mlir::TilingInterface>(linalgOp))
     {
 
+      SmallVector<mlir::Operation *, 2> producers;
+      ClonedTarget->walk([&](mlir::Operation *op)
+                         {
+                 // TODO: support multi-results.
+                //if ((op->getName().getStringRef()).str() != "linalg.fill"){
+                  if (auto linalgOp = dyn_cast<linalg::LinalgOp>(op))
+                  {
+                        producers.push_back(op);
+                  //} 
+                  } });
+      std::reverse(producers.begin(), producers.end());
+
       IRRewriter rewriter(context);
       OpBuilder builder(context);
 
@@ -427,11 +480,29 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
       if (!failed(tilingResult))
         rewriter.replaceOp(ClonedTileableOp, tilingResult->tileOp->getResults());
 
-      IRRewriter rewriter1(context);
-      FuseIntoContainingOperation(tilingResult->tileOp, ClonedTarget, rewriter1);
-    }
+      // IRRewriter rewriter1(context);
+      std::string consumerTag = "consumer" + CurrentStage;
+      TagSCFForAll(tilingResult->tileOp->getParentOp(), consumerTag);
+      FuseOps(ClonedTarget, producers, consumerTag, 1);
 
-    int ClonedOpIndex = 0;
+      node->setCurrentStage(node->getCurrentStage() + producers.size());
+      // FuseIntoContainingOperation(tilingResult->tileOp, ClonedTarget, rewriter1);
+    }
+    mlir::PassManager pm((ClonedTarget)->getName());
+
+    // Apply any generic pass manager command line options and run the pipeline.
+    applyPassManagerCLOptions(pm);
+
+    pm.addPass(mlir::createLoopInvariantCodeMotionPass());
+    pm.addPass(mlir::createCSEPass());
+    pm.addPass(mlir::createCanonicalizerPass());
+    pm.addPass(mlir::createCSEPass());
+
+    pm.addPass(mlir::bufferization::createEmptyTensorEliminationPass());
+    pm.addPass(mlir::bufferization::createEmptyTensorToAllocTensorPass());
+
+    if (!mlir::failed(pm.run((ClonedTarget))))
+      int ClonedOpIndex = 0;
     /*ClonedTarget->walk([&](Operation *op)
                        {
 
@@ -499,7 +570,7 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
   }
 
   return ResChildNodes;*/
-  std::cout << "FUSION DONE\n";
+  // std::cout << "FUSION DONE\n";
   return ChildNodes;
 }
 

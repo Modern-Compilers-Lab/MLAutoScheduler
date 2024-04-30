@@ -196,14 +196,14 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
       for (const auto &interchange : values)
       {
         MLIRCodeIR *ClonedCode = (MLIRCodeIR *)CodeIr->cloneIr();
-        Node *ChildNode = new Node(ClonedCode);
+        Node *ChildNode = new Node(ClonedCode, node->getCurrentStage());
 
         std::vector<Transformation *> TransList = node->getTransformationList();
         ChildNode->setTransformationList(TransList);
 
         scf::SCFTilingOptions options;
-
-        options.setTileSizes(candidate);
+        SmallVector<OpFoldResult> mixedSizes = getMixedSizes(candidate, context);
+        options.setTileSizes(mixedSizes);
         llvm::SmallVector<int64_t, 4> targetSmallVector;
 
         targetSmallVector.reserve(interchange.size()); // Optional optimization if you know the size beforehand
@@ -278,16 +278,17 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
     mlir::Operation *linalgOp = linalgOps[CurrentStage];
     if (mlir::TilingInterface ClonedTileableOp = dyn_cast<mlir::TilingInterface>(linalgOp))
     {
-      if ((op->getName().getStringRef()).str() != "linalg.fill")
-      {
+      /*if ((op->getName().getStringRef()).str() != "linalg.fill")
+      {*/
         IRRewriter rewriter(context);
         FailureOr<scf::SCFTilingResult> maybeTiled =
             scf::tileUsingSCFForOp(rewriter, ClonedTileableOp, tiling->getOptions());
         // FailureOr<scf::SCFTileAndFuseResult> maybeTiled =
         // mlir::scf::tileConsumerAndFuseProducerGreedilyUsingSCFForOp(rewriter,ClonedTileableOp,tiling->getOptions());
+        node->setCurrentStage(node->getCurrentStage() + 1);
         if (!failed(maybeTiled))
           rewriter.replaceOp(ClonedTileableOp, maybeTiled->loops.front()->getResults());
-      }
+      //}
     }
     int ClonedOpIndex = 0;
     /*ClonedTarget->walk([&](Operation *op)

@@ -89,7 +89,7 @@ SmallVector<Node *, 2> Interchange::createInterchangeCandidates(
 
           // Clone the code, create a new node, and set its transformation list
           MLIRCodeIR* ClonedCode =  (MLIRCodeIR*)CodeIr->cloneIr();
-          Node* ChildNode = new Node (ClonedCode);        
+          Node* ChildNode = new Node (ClonedCode, node->getCurrentStage());        
 
           std::vector<Transformation*> TransList= node->getTransformationList();
           ChildNode->setTransformationList(TransList);

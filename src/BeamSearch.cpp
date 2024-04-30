@@ -28,13 +28,13 @@ Node *BeamSearch::runSearchMethod(Node *root)
     // Clone the root's MLIR code for evaluation
     MLIRCodeIR *CodeIr = (MLIRCodeIR *)root->getTransformedCodeIr();
     MLIRCodeIR *ClonedCode = (MLIRCodeIR *)CodeIr->cloneIr();
-    Node *clone = new Node(ClonedCode);
+    Node *clone = new Node(ClonedCode, root->getCurrentStage());
     Node *BestNode = clone;
 
     // Create an evaluator for transformation evaluations
-    EvaluationByExecution evaluator = EvaluationByExecution(this->functionName + "_logs_best_beam_search_test_49x512x4608.txt");
+    EvaluationByExecution evaluator = EvaluationByExecution(this->functionName + "_logs_best_beam_search_now.txt");
 
-    while (!exploration_queue.empty() && level != 4)
+    while (!exploration_queue.empty() && level != 3)
     {
         std::cout << "################# Level = " << level << " ###############\n";
         // SmallVector<Node *,2> parent_nodes;
@@ -55,30 +55,30 @@ Node *BeamSearch::runSearchMethod(Node *root)
             switch (level)
             {
             case 0:
-                candidates = Parallelization::createParallelizationCandidates(node, this->context);
+                //candidates = Parallelization::createParallelizationCandidates(node, this->context);
                 break;
             case 1:
             {
-                candidates = Tiling::createTilingCandidates(node, this->context);
+                //candidates = Tiling::createTilingCandidates(node, this->context);
 
                 // Insert the parent node as a candidate
-                MLIRCodeIR *ToCloneCodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
+                /*MLIRCodeIR *ToCloneCodeIr = (MLIRCodeIR *)node->getTransformedCodeIr();
                 MLIRCodeIR *ClonedCode = (MLIRCodeIR *)ToCloneCodeIr->cloneIr();
                 Node *ClonedNode = new Node(ClonedCode);
 
                 std::vector<Transformation *> TransList = node->getTransformationList();
                 ClonedNode->setTransformationList(TransList);
 
-                candidates.insert(candidates.begin(), ClonedNode);
+                candidates.insert(candidates.begin(), ClonedNode);*/
 
                 // parent_nodes.insert(parent_nodes.begin(),ClonedNode );
                 break;
             }
 
-            case 2:
+            /*case 2:
                 candidates = Interchange::createInterchangeCandidates(node, this->context);
-                break;
-            case 3:
+                break;*/
+            case 2:
                 candidates = Vectorization::createVectorizationCandidates(node, this->context);
                 break;
             }
@@ -89,6 +89,7 @@ Node *BeamSearch::runSearchMethod(Node *root)
                 ChildNode->setEvaluation(evel);
             }
             // Sort the candidates based on their evaluation scores
+            
             std::sort(candidates.begin(), candidates.end(), [](Node *a, Node *b)
                       { return std::stod(a->getEvaluation()) < std::stod(b->getEvaluation()); });
 

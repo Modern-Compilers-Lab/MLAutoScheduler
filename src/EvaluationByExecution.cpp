@@ -98,7 +98,7 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     //op->print(output);
    
 
-    std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n %f = transform.structured.match ops{[\"func.func\"]} in %variant_op : (!transform.any_op) -> !transform.any_op \n transform.apply_patterns to %f {  \n transform.apply_patterns.vector.lower_contraction lowering_strategy = \"outerproduct\" \n transform.apply_patterns.vector.transfer_permutation_patterns \n transform.apply_patterns.vector.lower_multi_reduction lowering_strategy = \"innerparallel\" \n transform.apply_patterns.vector.split_transfer_full_partial split_transfer_strategy = \"vector-transfer\" \n transform.apply_patterns.vector.transfer_to_scf max_transfer_rank = 1 full_unroll = true \n transform.apply_patterns.vector.lower_transfer max_transfer_rank = 1 \n transform.apply_patterns.vector.lower_shape_cast \n transform.apply_patterns.vector.lower_transpose lowering_strategy = \"shuffle_1d\" \n transform.apply_patterns.canonicalization} \n : !transform.any_op}";
+   //std::string transformDialectString = "transform.sequence failures(propagate) { \n ^bb1(%variant_op: !transform.any_op): \n %f = transform.structured.match ops{[\"func.func\"]} in %variant_op : (!transform.any_op) -> !transform.any_op \n transform.apply_patterns to %f {  \n transform.apply_patterns.vector.lower_contraction lowering_strategy = \"outerproduct\" \n transform.apply_patterns.vector.transfer_permutation_patterns \n transform.apply_patterns.vector.lower_multi_reduction lowering_strategy = \"innerparallel\" \n transform.apply_patterns.vector.split_transfer_full_partial split_transfer_strategy = \"vector-transfer\" \n transform.apply_patterns.vector.transfer_to_scf max_transfer_rank = 1 full_unroll = true \n transform.apply_patterns.vector.lower_transfer max_transfer_rank = 1 \n transform.apply_patterns.vector.lower_shape_cast \n transform.apply_patterns.vector.lower_transpose lowering_strategy = \"shuffle_1d\" \n transform.apply_patterns.canonicalization} \n : !transform.any_op}";
     /*std::string transformedString = getTransformedCode(str1, transformDialectString);
     if (transformedString == "process did not exit normally")
     {
@@ -115,6 +115,20 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     //(*module)->dump();
     std::string outString;
     llvm::raw_string_ostream output_run(outString);
+
+
+    std::string transformDialectString = "module attributes {transform.with_named_sequence} { \n transform.named_sequence @__transform_main(%variant_op: !transform.any_op {transform.readonly})  { %f = transform.structured.match ops{[\"func.func\"]} in %variant_op : (!transform.any_op) -> !transform.any_op \n transform.apply_patterns to %f {  \n transform.apply_patterns.vector.lower_contraction lowering_strategy = \"outerproduct\" \n transform.apply_patterns.vector.transfer_permutation_patterns \n transform.apply_patterns.vector.lower_multi_reduction lowering_strategy = \"innerparallel\" \n transform.apply_patterns.vector.split_transfer_full_partial split_transfer_strategy = \"vector-transfer\" \n transform.apply_patterns.vector.transfer_to_scf max_transfer_rank = 1 full_unroll = true \n transform.apply_patterns.vector.lower_transfer max_transfer_rank = 1 \n transform.apply_patterns.vector.lower_shape_cast \n transform.apply_patterns.vector.lower_transpose lowering_strategy = \"shuffle_1d\" \n transform.apply_patterns.canonicalization} \n : !transform.any_op \n transform.yield}}";
+    std::cout << "START VECT\n";
+
+    mlir::transform::TransformOptions options1;
+    mlir::OwningOpRef<mlir::ModuleOp> moduleFromFile = parseSourceString<mlir::ModuleOp>(transformDialectString, op->getContext());
+    llvm::StringRef entryPoint = "__transform_main";
+    mlir::Operation *transformEntryPoint = transform::detail::findTransformEntryPoint(op, *moduleFromFile, entryPoint);
+
+    transform::applyTransformNamedSequence(
+        op, transformEntryPoint, *moduleFromFile,
+        options1.enableExpensiveChecks(false));
+
     //auto start = std::chrono::high_resolution_clock::now();
     mlir::PassManager pm((op)->getName());
     
@@ -123,11 +137,11 @@ std::string EvaluationByExecution::evaluateTransformation(Node *node)
     applyPassManagerCLOptions(pm);
     
     bufferization::OneShotBufferizationOptions options;
-    options.allowReturnAllocs = true;
+    //options.allowReturnAllocs = true;
     options.bufferizeFunctionBoundaries = true;
-    options.createDeallocs = true;
+    //options.createDeallocs = true;
     options.setFunctionBoundaryTypeConversion(mlir::bufferization::LayoutMapOption::IdentityLayoutMap);
-    pm.addPass(createTransformDialectInterpreterPass(transformDialectString));
+    //pm.addPass(createTransformDialectInterpreterPass(transformDialectString));
 
     //pm.addPass(createTestTransformDialectEraseSchedulePass());
     pm.addPass(mlir::createLoopInvariantCodeMotionPass());
