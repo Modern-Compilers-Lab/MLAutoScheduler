@@ -26,7 +26,7 @@ cmake --build .
 export LLVM_PATH=/scratch/ia2280/LLVM/llvm-project
 export SHARED_LIBS=/scratch/ia2280/LLVM/llvm-project/build/lib/libmlir_runner_utils.so,/scratch/ia2280/LLVM/llvm-project/build/lib/libmlir_c_runner_utils.so,/scratch/ia2280/LLVM/llvm-project/build/lib/libomp.so
 export AS_VERBOSE=1
-./bin/AutoSchedulerML ../benchmarks/conv2dsimple.mlir
+./bin/AutoSchedulerML ../benchmarks/conv2d/conv2d_nhwc_hwcf_1024.mlir
 
 
 
