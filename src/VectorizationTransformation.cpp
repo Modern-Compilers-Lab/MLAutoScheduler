@@ -315,7 +315,7 @@ SmallVector<Node *, 2> Vectorization::createVectorizationCandidates(Node *node,
 
     // auto start = std::chrono::high_resolution_clock::now();
     std::string transformDialectString = "module attributes {transform.with_named_sequence} { \n transform.named_sequence @__transform_main(%variant_op: !transform.any_op {transform.readonly})  { \n   %func = transform.structured.match ops{[\"func.func\"]} in %variant_op: (!transform.any_op) -> !transform.any_op \n  %func_0 = transform.structured.vectorize_children_and_apply_patterns %func {vectorize_padding}: (!transform.any_op) -> (!transform.any_op) \n %func_01 = transform.structured.hoist_redundant_vector_transfers %func_0 :(!transform.any_op) -> (!transform.any_op) \n transform.yield}}";
-    std::cout << "START VECT\n";
+    //std::cout << "START VECT\n";
 
     mlir::transform::TransformOptions options1;
     mlir::OwningOpRef<mlir::ModuleOp> moduleFromFile = parseSourceString<mlir::ModuleOp>(transformDialectString, Target->getContext());
