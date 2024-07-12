@@ -49,7 +49,7 @@ class Tiling: public Transformation{
         /// Overrides the createCandidates() method from the base class Transformation.
         static SmallVector<Node* , 2>  createTilingCandidates(Node *node, mlir::MLIRContext *context,
                                                                         int CurrentStage,
-                                                                        SmallVector<mlir::linalg::LinalgOp, 4> LinalgOpStages);
+                                                                        std::unordered_map<std::string, std::pair<mlir::linalg::LinalgOp, LinalgMappingClassification>>   LinalgOpStages);
 
         mlir::scf::SCFTilingOptions getOptions();
         int getOperationStage();

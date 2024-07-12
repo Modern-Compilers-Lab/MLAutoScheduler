@@ -140,7 +140,7 @@ void Tiling::applyTransformation(CodeIR CodeIr)
 SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
                                                       mlir::MLIRContext *context,
                                                       int CurrentStage,
-                                                      SmallVector<mlir::linalg::LinalgOp, 4> LinalgOpStages)
+                                                      std::unordered_map<std::string, std::pair<mlir::linalg::LinalgOp, LinalgMappingClassification>>   LinalgOpStages)
 {
 
   // int64_t maxNumberLoops = 3;
@@ -161,7 +161,7 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
 
   Operation *target = ((Operation *)(*CodeIr)
                            .getIr());
-  Operation *op = LinalgOpStages[CurrentStage];
+  Operation *op = LinalgOpStages["operation"+std::to_string(CurrentStage)].first;
   /*target->walk([&](Operation *op)
                {
     if ((op->getName().getStringRef()).str() != "linalg.fill" ){*/
@@ -273,9 +273,9 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
     Operation *ClonedTarget = ((Operation *)(*((MLIRCodeIR *)node->getTransformedCodeIr()))
                                    .getIr());
     Tiling *tiling = (Tiling *)node->getTransformation();
-    SmallVector<mlir::linalg::LinalgOp, 4> linalgOps = getLinalgOps(ClonedTarget);
+    std::unordered_map<std::string, std::pair<mlir::linalg::LinalgOp, LinalgMappingClassification>> linalgOps = getLinalgOps(ClonedTarget);
 
-    mlir::Operation *linalgOp = linalgOps[CurrentStage];
+    mlir::Operation *linalgOp = linalgOps["operation"+std::to_string(CurrentStage)].first;
     if (mlir::TilingInterface ClonedTileableOp = dyn_cast<mlir::TilingInterface>(linalgOp))
     {
       /*if ((op->getName().getStringRef()).str() != "linalg.fill")
@@ -285,7 +285,7 @@ SmallVector<Node *, 2> Tiling::createTilingCandidates(Node *node,
             scf::tileUsingSCFForOp(rewriter, ClonedTileableOp, tiling->getOptions());
         // FailureOr<scf::SCFTileAndFuseResult> maybeTiled =
         // mlir::scf::tileConsumerAndFuseProducerGreedilyUsingSCFForOp(rewriter,ClonedTileableOp,tiling->getOptions());
-        node->setCurrentStage(node->getCurrentStage() + 1);
+        node->setCurrentStage(node->getCurrentStage() - 1);
         if (!failed(maybeTiled))
           rewriter.replaceOp(ClonedTileableOp, maybeTiled->loops.front()->getResults());
       //}

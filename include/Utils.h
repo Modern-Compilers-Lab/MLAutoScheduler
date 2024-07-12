@@ -16,6 +16,15 @@
 #include <set>
 #include <random>
 
+// Enum representing the mapping classification
+enum class LinalgMappingClassification
+{
+  Unknown,
+  OneToOne,
+  OneToMany,
+  ManyToSingle,
+  ManyToMany,
+};
 void generateCombinations(const llvm::SmallVector<llvm::SmallVector<int64_t, 4>, 4> &tileSizes,
                           int64_t maxNumberLoops,
                           int64_t currentLoop,
@@ -55,7 +64,7 @@ void generateCandidateHelper(std::vector<unsigned> &values,
                              std::vector<std::vector<unsigned>> &candidates,
                              unsigned index);
 
-llvm::SmallVector<mlir::linalg::LinalgOp, 4> getLinalgOps(mlir::Operation *prog);
+std::unordered_map<std::string, std::pair<mlir::linalg::LinalgOp, LinalgMappingClassification>> getLinalgOps(mlir::Operation *prog);
 std::pair<std::vector<std::string>, std::vector<std::string>> remove_duplicate_args(std::vector<std::string> args, std::vector<std::string> shapes);
 std::string function_wrapper(const std::string &operation, const std::string &maps = "");
 
@@ -63,4 +72,8 @@ llvm::SmallVector<mlir::OpFoldResult> getMixedSizes(llvm::ArrayRef<int64_t> tile
 
 mlir::LogicalResult TagSCFForAll(mlir::Operation *Target, std::string tag);
 mlir::LogicalResult TagOperation(mlir::Operation *Target, std::string tag);
+
+// Function to classify the mapping type of a linalg operation
+LinalgMappingClassification classifyLinalgOp(mlir::Operation *op);
+std::string getMappingTypeString(LinalgMappingClassification classification);
 #endif // MLSCHEDULER_UTILS_H_
