@@ -9,8 +9,6 @@
 //===----------------------------------------------------------------------===//
 #include "ParallelizationTransformation.h"
 
-#include "/scratch/ia2280/LLVM/llvm-project/mlir/lib/Dialect/Linalg/TransformOps/LinalgTransformOps.cpp"
-#include "/scratch/ia2280/LLVM/llvm-project/mlir/test/lib/Dialect/Linalg/TestLinalgFusionTransforms.cpp"
 
 using namespace mlir;
 
@@ -35,9 +33,9 @@ static LogicalResult fuseLinalgOpsGreedily(Operation *f)
   DenseSet<Operation *> eraseSet;
 
   // Save original Linalg ops, we only want to make a pass over those.
-  SmallVector<LinalgOp, 8> linalgOps;
+  SmallVector<mlir::linalg::LinalgOp, 8> linalgOps;
 
-  f->walk([&](LinalgOp op)
+  f->walk([&](mlir::linalg::LinalgOp op)
           {
             if (op->getNumResults() <= 1)
             {
@@ -46,7 +44,7 @@ static LogicalResult fuseLinalgOpsGreedily(Operation *f)
 
   // Tile and Fuse for tensors inputs (TODO: all tensor operands).
   bool changed = false;
-  for (LinalgOp linalgOp : llvm::reverse(linalgOps))
+  for (mlir::linalg::LinalgOp linalgOp : llvm::reverse(linalgOps))
   {
 
     for (OpOperand &opOperand : linalgOp->getOpOperands())
@@ -66,7 +64,7 @@ static LogicalResult fuseLinalgOpsGreedily(Operation *f)
           continue;
         }
 
-        auto info = fuseProducerOfTensor(b, opOperand);
+        auto info = mlir::linalg::fuseProducerOfTensor(b, opOperand);
         if (failed(info))
           continue;
 
