@@ -19,7 +19,7 @@ To get a local copy up and running follow these simple example steps.
 1. Building MLIR :
    ```sh
    git clone https://github.com/llvm/llvm-project.git
-   git checkout release/17.x
+   git checkout release/18.x
    mkdir llvm-project/build
    cd llvm-project/build
    cmake -G Ninja ../llvm \
