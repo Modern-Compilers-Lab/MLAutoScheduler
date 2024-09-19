@@ -28,6 +28,8 @@ To get a local copy up and running follow these simple example steps.
    -DLLVM_TARGETS_TO_BUILD="Native;NVPTX;AMDGPU" \
    -DCMAKE_BUILD_TYPE=Release \
    -DLLVM_ENABLE_ASSERTIONS=ON \
+   
+   cmake --build . --target check-mlir
    ```
 
    For more detalis follow instructions at [https://mlir.llvm.org/getting_started/](https://mlir.llvm.org/getting_started/)
