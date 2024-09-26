@@ -105,7 +105,6 @@ PRIVATE
 
   MLIRMathToLLVM
   MLIRMemRefToLLVM
-  MLIRLinalgToLLVM
   MLIROpenMPToLLVM
   MLIRSCFToOpenMP
   MLIRBufferizationToMemRef

@@ -110,10 +110,10 @@ DiagnosedSilenceableFailure FuseOps(Operation *f, Operation *containingOp, Small
     }
     else
     {
-      std::cerr << "CONTAINEROP " << std::endl;
+      //std::cerr << "CONTAINEROP " << std::endl;
     }
   }
-  std::cerr << "FUSIONS DONE" << nbFused << std::endl;
+  //std::cerr << "FUSIONS DONE" << nbFused << std::endl;
   mlir::PassManager pm((f)->getName());
 
   // Apply any generic pass manager command line options and run the pipeline.
@@ -505,7 +505,7 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
       // Getting producers
       for (int i = 0; i < tilingResult->tileOp->getNumOperands(); i++)
       {
-        std::cerr << "tilingResult->tileOp->getNumOperands()" << tilingResult->tileOp->getNumOperands() << std::endl;
+       
         Operation *producer = tilingResult->tileOp->getOperand(i).getDefiningOp();
         if (producer)
         {
@@ -575,7 +575,7 @@ SmallVector<Node *, 2> Parallelization::createParallelizationCandidates(Node *no
           producers.push_back(value.first);
         }
       }*/
-     std::cerr << " producers size : " << producers.size() << std::endl;
+    //std::cerr << " producers size : " << producers.size() << std::endl;
 
       // FuseOps(ClonedTargetForFusion, linalgOpCurrentStageEqu, producers, consumerTag, nbFused);
       FuseOps(ClonedTarget, tilingResult->tileOp, producers, consumerTag, nbFused);

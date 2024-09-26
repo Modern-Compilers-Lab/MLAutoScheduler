@@ -28,7 +28,7 @@ To get a local copy up and running follow these simple example steps.
    -DLLVM_TARGETS_TO_BUILD="Native;NVPTX;AMDGPU" \
    -DCMAKE_BUILD_TYPE=Release \
    -DLLVM_ENABLE_ASSERTIONS=ON \
-   
+
    cmake --build . --target check-mlir
    ```
 
@@ -38,20 +38,24 @@ To get a local copy up and running follow these simple example steps.
    ```sh
    git clone https://github.com/MLIR-Autoscheduler/MLAutoScheduler.git
    ```
-3. Build 
+3. Clone the submodules
+   ```sh
+   git submodule update --init --recursive
+   ```
+4. Build 
    ```sh
     mkdir build
     cd build/
-    cmake .. -DMLIR_DIR={Path to llvm folder}/build/lib/cmake/mlir -DLLVM_EXTERNAL_LIT={Path to llvm folder}/build/bin/llvm-lit
-    cmake --build .
+    cmake .. -DMLIR_DIR={Path to llvm folder}/build/lib/cmake/mlir
+    cmake --build . -j
     ```
-4. Add env variables :
+5. Add env variables :
    ```sh
    export LLVM_PATH={Path to llvm folder}
    export SHARED_LIBS={set of shared libs used for mlir-cpu-runner}
    export AS_VERBOSE=1 (optinal)
    ```
-5. Run
+6. Run
    ```sh
     bin/AutoSchedulerML ../benchmarks/{name of the benchmark}.mlir
    ```

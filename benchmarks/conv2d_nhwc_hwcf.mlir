@@ -102,7 +102,13 @@ func.func @conv() -> !TTc {
   return %dense_ret : !TTc 
 }
 func.func @main(){
+
+   %c1 = arith.constant 1: index
+    %c0 = arith.constant 0 : index
+    %n = arith.constant 2: index
+    scf.for %i = %c0 to %n step %c1 {
     %outputmain = call @conv() : () -> !TTc
+    }
     //%unranked = tensor.cast %outputmain : !TTc to tensor<*xf32>
     //call @printMemrefF32(%unranked) : (tensor<*xf32>) -> ()
 
