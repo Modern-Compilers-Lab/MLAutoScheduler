@@ -1,3 +1,6 @@
 [submodule "coreAutoScheduler"]
 	path = coreAutoScheduler
 	url = https://github.com/MLIR-Autoscheduler/coreAutoScheduler.git
+[submodule "Model_To_MLIR"]
+	path = Model_To_MLIR
+	url = https://github.com/Chamiln17/Model_To_MLIR
