@@ -14,6 +14,7 @@ To get a local copy up and running follow these simple example steps.
 1) [CMake](https://cmake.org/): version 3.20 or greater.
 2) [Ninja](https://ninja-build.org/).
 3) [Gcc](https://gcc.gnu.org/) : version 13.2.
+4) [Gxx]: version 13.2.
 
 ### Build:
 1. Building MLIR :
