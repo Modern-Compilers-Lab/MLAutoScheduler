@@ -14,6 +14,7 @@ To get a local copy up and running follow these simple example steps.
 1) [CMake](https://cmake.org/): version 3.20 or greater.
 2) [Ninja](https://ninja-build.org/).
 3) [Gcc](https://gcc.gnu.org/) : version 13.2.
+4) [Gxx]: version 13.2.
 
 ### Build:
 1. Building MLIR :
@@ -36,22 +37,26 @@ To get a local copy up and running follow these simple example steps.
 
 2. Clone the repo
    ```sh
-   git clone https://github.com/MLIR-Autoscheduler/MLAutoScheduler.git
+   git clone https://github.com/Modern-Compilers-Lab/MLAutoScheduler
    ```
-3. Build 
+3. Clone the submodules
+   ```sh
+   git submodule update --init --recursive
+   ```
+4. Build 
    ```sh
     mkdir build
     cd build/
-    cmake .. -DMLIR_DIR={Path to llvm folder}/build/lib/cmake/mlir -DLLVM_EXTERNAL_LIT={Path to llvm folder}/build/bin/llvm-lit
-    cmake --build .
+    cmake .. -DMLIR_DIR={Path to llvm folder}/build/lib/cmake/mlir
+    cmake --build . -j
     ```
-4. Add env variables :
+5. Add env variables :
    ```sh
    export LLVM_PATH={Path to llvm folder}
-   export SHARED_LIBS={set of shared libs used for mlir-cpu-runner}
-   export AS_VERBOSE=1 (optinal)
+   export SHARED_LIBS=export SHARED_LIBS="${LLVM_PATH}/build/lib/libmlir_runner_utils.so,${LLVM_PATH}/build/lib/libmlir_c_runner_utils.so,${LLVM_PATH}/build/lib/libomp.so"
+   export AS_VERBOSE=1 
    ```
-5. Run
+6. Run
    ```sh
     bin/AutoSchedulerML ../benchmarks/{name of the benchmark}.mlir
    ```
