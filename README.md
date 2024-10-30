@@ -54,7 +54,7 @@ To get a local copy up and running follow these simple example steps.
 5. Add env variables :
    ```sh
    export LLVM_PATH={Path to llvm folder}
-   export SHARED_LIBS=export SHARED_LIBS="${LLVM_PATH}/build/lib/libmlir_runner_utils.so,${LLVM_PATH}/build/lib/libmlir_c_runner_utils.so,${LLVM_PATH}/build/lib/libomp.so"
+   export SHARED_LIBS="${LLVM_PATH}/build/lib/libmlir_runner_utils.so,${LLVM_PATH}/build/lib/libmlir_c_runner_utils.so,${LLVM_PATH}/build/lib/libomp.so"
    export AS_VERBOSE=1 
    ```
 6. Run
